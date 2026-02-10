@@ -9,4 +9,6 @@ export const createRoundSchema = z.object({
   skinsEnabled: z.boolean().default(true),
 })
 
-export const updateRoundSchema = createRoundSchema.partial()
+export const updateRoundSchema = createRoundSchema.partial().extend({
+  verificationStatus: z.enum(['UNVERIFIED', 'VERIFIED', 'LOCKED']).optional(),
+})

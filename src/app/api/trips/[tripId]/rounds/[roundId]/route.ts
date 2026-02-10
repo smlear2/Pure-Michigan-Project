@@ -27,6 +27,23 @@ export async function PUT(
     if (validated.format !== undefined) updateData.format = validated.format
     if (validated.skinsEnabled !== undefined) updateData.skinsEnabled = validated.skinsEnabled
 
+    // Verification status — requires organizer or canVerifyScores
+    if (validated.verificationStatus !== undefined) {
+      if (!isOrganizer) {
+        const tripPlayer = await prisma.tripPlayer.findFirst({
+          where: { tripId: params.tripId, userId: auth.dbUser.id, canVerifyScores: true },
+        })
+        if (!tripPlayer) {
+          return errorResponse('Only organizer or score verifiers can change verification status', 'FORBIDDEN', 403)
+        }
+      }
+      updateData.verificationStatus = validated.verificationStatus
+      if (validated.verificationStatus === 'VERIFIED') {
+        updateData.verifiedAt = new Date()
+        updateData.verifiedById = auth.dbUser.id
+      }
+    }
+
     const round = await prisma.round.update({
       where: { id: params.roundId },
       data: updateData,

@@ -1,0 +1,24 @@
+// ===========================================
+// GOLF CALCULATION ENGINE — Barrel Export
+// ===========================================
+
+export {
+  courseHandicap,
+  playingHandicap,
+  strokeAllocation,
+  receivesStroke,
+  receivesDoubleStroke,
+} from './handicap'
+export type { HoleInfo } from './handicap'
+
+export { applyMaxScore, netScore } from './scoring'
+
+export {
+  bestBall,
+  holeWinner,
+  computeMatchState,
+} from './match-play'
+export type { HoleResult, MatchState } from './match-play'
+
+export { calculateSkins } from './skins'
+export type { HoleSkinScore, SkinResult, SkinsResult } from './skins'
