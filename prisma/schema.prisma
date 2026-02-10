@@ -1,6 +1,17 @@
 // ===========================================
-// PRISMA SCHEMA - Flexible Golf Trip Tracker
-// Designed for customization and multi-tenancy
+// PRISMA SCHEMA — Golf Tournament Platform
+// V1 Architecture — Updated 2026-02-10
+// ===========================================
+// 
+// Key changes from previous schema:
+// - Global User model (Supabase Auth integration)
+// - TripPlayer join table (users participate in trips)
+// - Handicap freeze date per trip
+// - Wager/Skins models with variable pot
+// - Side games (CTP, longest drive, longest putt)
+// - Modified Alt Shot format support
+// - Round verification system
+// - Nothing hardcoded — all team names, colors, formats configurable
 // ===========================================
 
 generator client {
@@ -8,104 +19,142 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ===========================================
-// TRIP (Top-level container - the "event")
+// USER (Global identity — Supabase Auth)
+// ===========================================
+
+model User {
+  id              String   @id @default(cuid())
+  supabaseId      String   @unique              // Maps to Supabase Auth user ID
+  email           String   @unique
+  name            String
+  avatarUrl       String?
+  ghinNumber      String?                       // Optional GHIN number
+  handicapIndex   Float?                        // Current handicap index (updated by user)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  tripPlayers     TripPlayer[]
+  verifiedRounds  Round[]       @relation("VerifiedBy")
+}
+
+// ===========================================
+// TRIP (Top-level container — the tournament/event)
 // ===========================================
 
 model Trip {
-  id            String   @id @default(cuid())
-  name          String   // "Michigan Open 2025", "Scottsdale Boys Trip", etc.
-  year          Int
-  startDate     DateTime
-  endDate       DateTime
-  location      String?  // "Northern Michigan", "Scottsdale, AZ"
-  description   String?
-  
+  id                String    @id @default(cuid())
+  name              String                       // "Michigan Open 2025", "Scottsdale Boys Trip"
+  year              Int
+  startDate         DateTime
+  endDate           DateTime
+  location          String?                      // "Northern Michigan", "Scottsdale, AZ"
+  description       String?
+  inviteCode        String    @unique @default(cuid()) // For shareable invite links
+
   // Scoring configuration
-  pointsForWin  Float    @default(1)    // Points awarded for a match win
-  pointsForHalf Float    @default(0.5)  // Points for a halved match
-  pointsToWin   Float?                  // Optional: points needed to clinch (null = just count total)
-  
+  pointsForWin      Float     @default(1)        // Points awarded for a match win
+  pointsForHalf     Float     @default(0.5)      // Points for a halved match
+  pointsToWin       Float?                       // Points needed to clinch (null = just count total)
+
   // Team mode vs Individual mode
-  isTeamEvent   Boolean  @default(true) // false = individual competition
-  
-  // Skins configuration
-  skinsEntryFee Float    @default(20)   // Per-person skins buy-in
-  skinsCarryover Boolean @default(false) // Do ties carry over?
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isTeamEvent       Boolean   @default(true)     // false = individual competition
+
+  // Handicap
+  handicapFreezeDate DateTime?                   // Handicaps lock on this date (defaults to startDate)
+
+  // Skins defaults (can be overridden per round via WagerConfig)
+  defaultSkinsEntryFee Float  @default(20)
+  defaultSkinsCarryover Boolean @default(false)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relations
-  teams         Team[]
-  players       Player[]
-  courses       TripCourse[]
-  rounds        Round[]
-  mvpConfig     MVPConfig?
-  
+  teams             Team[]
+  tripPlayers       TripPlayer[]
+  courses           TripCourse[]
+  rounds            Round[]
+  mvpConfig         MVPConfig?
+  wagerConfigs      WagerConfig[]
+
   @@unique([name, year])
 }
 
 // ===========================================
-// TEAMS (Flexible - any number, any names)
+// TRIP PLAYER (Join table — connects Users to Trips)
+// ===========================================
+
+model TripPlayer {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId          String
+  trip            Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  teamId          String?                        // Null if unassigned or individual event
+  team            Team?        @relation(fields: [teamId], references: [id])
+
+  role            TripRole     @default(PLAYER)
+  handicapAtTime  Float                          // Snapshot — syncs with User.handicapIndex until freeze date, then locks
+  isActive        Boolean      @default(true)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  matchPlayers    MatchPlayer[]
+  scores          Score[]
+  skinResults     WagerResult[]  @relation("SkinWinner")
+  sideGameWins    SideGame[]     @relation("SideGameWinner")
+
+  @@unique([userId, tripId])
+}
+
+enum TripRole {
+  ORGANIZER
+  CAPTAIN
+  PLAYER
+}
+
+// ===========================================
+// TEAMS (Flexible — any number, any names, any colors)
 // ===========================================
 
 model Team {
-  id        String  @id @default(cuid())
-  tripId    String
-  trip      Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  name      String  // "USA", "Europe", "Team Alpha", "Shirts", "Skins", etc.
-  color     String  // Hex color for display
-  sortOrder Int     @default(0) // For consistent display ordering
-  
-  players   Player[]
-  
+  id          String  @id @default(cuid())
+  tripId      String
+  trip        Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name        String                             // "USA", "Europe", "Shirts", "Team Alpha" — anything
+  color       String                             // Hex color for display
+  sortOrder   Int     @default(0)
+
+  tripPlayers TripPlayer[]
+
   @@unique([tripId, name])
 }
 
 // ===========================================
-// PLAYERS (Belong to a trip, optionally to a team)
-// ===========================================
-
-model Player {
-  id             String   @id @default(cuid())
-  tripId         String
-  trip           Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  teamId         String?  // Nullable for individual events
-  team           Team?    @relation(fields: [teamId], references: [id])
-  
-  name           String
-  handicapIndex  Float    // Official handicap index
-  email          String?  // For future notifications
-  phone          String?
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Relations
-  matchPlayers   MatchPlayer[]
-  scores         Score[]
-  skins          Skin[]
-  
-  @@unique([tripId, name])
-}
-
-// ===========================================
-// COURSES (Global - can be reused across trips)
+// COURSES (Global — reusable across trips)
 // ===========================================
 
 model Course {
-  id        String   @id @default(cuid())
-  name      String
-  location  String?
-  website   String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  location    String?
+  website     String?
+  externalId  Int?     @unique                   // From golfcourseapi.com for dedup
+  latitude    Float?
+  longitude   Float?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tees        Tee[]
   tripCourses TripCourse[]
@@ -113,17 +162,17 @@ model Course {
 
 model Tee {
   id       String @id @default(cuid())
-  courseId String
+  courseId  String
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  
-  name     String  // "Blue", "White", "Purple", "Tips", etc.
-  color    String  // Hex color for display
-  rating   Float   // Course rating (e.g., 71.4)
-  slope    Int     // Slope rating (e.g., 135)
-  
+
+  name     String                                // "Blue", "White", "Purple", etc.
+  color    String                                // Hex color for display
+  rating   Float                                 // Course rating (e.g., 71.4)
+  slope    Int                                   // Slope rating (e.g., 135)
+
   holes    Hole[]
   rounds   Round[]
-  
+
   @@unique([courseId, name])
 }
 
@@ -131,66 +180,88 @@ model Hole {
   id       String @id @default(cuid())
   teeId    String
   tee      Tee    @relation(fields: [teeId], references: [id], onDelete: Cascade)
-  
-  number   Int    // 1-18
-  par      Int    // 3, 4, or 5
+
+  number   Int                                   // 1-18
+  par      Int                                   // 3, 4, or 5
   yardage  Int
-  handicap Int    // Stroke index (1 = hardest hole, 18 = easiest)
-  
-  scores   Score[]
-  skins    Skin[]
-  
+  handicap Int                                   // Stroke index (1 = hardest, 18 = easiest)
+
+  scores      Score[]
+  wagerResults WagerResult[]
+  sideGames   SideGame[]
+
   @@unique([teeId, number])
 }
 
-// Junction table: Which courses are used in which trips
+// Junction table: which courses are used in which trips
 model TripCourse {
   id        String @id @default(cuid())
   tripId    String
   trip      Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  courseId  String
+  courseId   String
   course    Course @relation(fields: [courseId], references: [id])
-  
+
   @@unique([tripId, courseId])
 }
 
 // ===========================================
-// ROUNDS (A day/session of golf within a trip)
+// ROUNDS (A session of golf within a trip)
 // ===========================================
 
 model Round {
-  id           String      @id @default(cuid())
-  tripId       String
-  trip         Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  teeId        String
-  tee          Tee         @relation(fields: [teeId], references: [id])
-  
-  roundNumber  Int         // 1, 2, 3, etc.
-  name         String?     // Optional custom name: "Day 1 - Morning"
-  date         DateTime?   // Specific date for this round
-  format       MatchFormat
-  
-  // Round-specific settings
-  skinsEnabled Boolean     @default(true)
-  isComplete   Boolean     @default(false)
-  
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                 String             @id @default(cuid())
+  tripId             String
+  trip               Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  teeId              String
+  tee                Tee                @relation(fields: [teeId], references: [id])
 
-  matches      Match[]
-  skins        Skin[]
-  
+  roundNumber        Int                         // 1, 2, 3, etc.
+  name               String?                     // "Day 1 - Morning", "Saturday PM"
+  date               DateTime?
+
+  format             MatchFormat
+  formatConfig       Json?                       // Format-specific settings (e.g., min drives per 9 for modified alt shot)
+
+  // Round settings
+  skinsEnabled       Boolean            @default(true)
+  isComplete         Boolean            @default(false)
+
+  // Verification
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verificationType   VerificationType   @default(HOLE_BY_HOLE)
+  verifiedAt         DateTime?
+  verifiedById       String?
+  verifiedBy         User?              @relation("VerifiedBy", fields: [verifiedById], references: [id])
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  matches            Match[]
+  wagerResults       WagerResult[]
+  sideGames          SideGame[]
+
   @@unique([tripId, roundNumber])
 }
 
 enum MatchFormat {
-  FOURBALL      // Best ball: 2v2, each plays own ball, take best score
-  FOURSOMES     // Alternate shot: 2v2, one ball per team
-  SCRAMBLE      // Best shot: team plays from best position
-  SINGLES       // 1v1 match play
-  STROKEPLAY    // Individual stroke play
-  STABLEFORD    // Points-based scoring
-  CHAPMAN       // Modified alternate shot
+  FOURBALL            // Best ball: 2v2, each plays own ball, best score counts
+  FOURSOMES           // Alternate shot: 2v2, one ball per team
+  MODIFIED_ALT_SHOT   // Both tee off, pick best drive, alternate from there (min drive req)
+  SCRAMBLE            // Best shot: team plays from best position
+  SHAMBLE             // Best drive, then everyone plays own ball, best ball
+  SINGLES             // 1v1 match play
+  STROKEPLAY          // Individual stroke play
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  LOCKED
+}
+
+enum VerificationType {
+  HOLE_BY_HOLE        // Full hole-by-hole review and confirm
+  SIMPLE_CONFIRM      // "I confirm these scores" checkbox
 }
 
 // ===========================================
@@ -201,20 +272,20 @@ model Match {
   id           String      @id @default(cuid())
   roundId      String
   round        Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  
-  matchNumber  Int         // 1, 2, 3, etc. within the round
+
+  matchNumber  Int                               // 1, 2, 3, etc. within the round
   status       MatchStatus @default(PENDING)
-  
+
   // Results (filled in when complete)
-  resultText   String?     // "3&2", "1UP", "Halved", etc.
-  team1Points  Float       @default(0)
-  team2Points  Float       @default(0)
-  
+  resultText   String?                           // "3&2", "1UP", "Halved", etc.
+  side1Points  Float       @default(0)           // Dynamic — not hardcoded to any team name
+  side2Points  Float       @default(0)
+
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
   players      MatchPlayer[]
-  
+
   @@unique([roundId, matchNumber])
 }
 
@@ -229,22 +300,22 @@ enum MatchStatus {
 // ===========================================
 
 model MatchPlayer {
-  id              String @id @default(cuid())
+  id              String     @id @default(cuid())
   matchId         String
-  match           Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  playerId        String
-  player          Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  
+  match           Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  tripPlayerId    String
+  tripPlayer      TripPlayer @relation(fields: [tripPlayerId], references: [id], onDelete: Cascade)
+
   // Handicap info for this specific match
-  courseHandicap  Int    // Calculated: index * (slope/113)
-  playingHandicap Int    // Strokes received (course handicap - lowest in group)
-  
-  // Which "side" of the match (1 or 2)
-  teamPosition    Int    @default(1)
-  
+  courseHandicap   Int                            // Calculated: index × (slope/113)
+  playingHandicap  Int                            // Strokes received (course handicap - lowest in group)
+
+  // Which side of the match (1 or 2)
+  side            Int        @default(1)
+
   scores          Score[]
-  
-  @@unique([matchId, playerId])
+
+  @@unique([matchId, tripPlayerId])
 }
 
 // ===========================================
@@ -255,15 +326,18 @@ model Score {
   id             String      @id @default(cuid())
   matchPlayerId  String
   matchPlayer    MatchPlayer @relation(fields: [matchPlayerId], references: [id], onDelete: Cascade)
-  playerId       String
-  player         Player      @relation(fields: [playerId], references: [id])
+  tripPlayerId   String
+  tripPlayer     TripPlayer  @relation(fields: [tripPlayerId], references: [id])
   holeId         String
   hole           Hole        @relation(fields: [holeId], references: [id])
-  
-  grossScore     Int         // Actual strokes taken
-  netScore       Int         // Gross - stroke received (if any)
+
+  grossScore     Int                              // Actual strokes taken
+  netScore       Int                              // Gross - stroke received (if any)
   strokeReceived Boolean     @default(false)
-  
+
+  // Modified Alt Shot tracking
+  driveUsed      Boolean?                         // Was this player's drive selected? (null for non-alt-shot)
+
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -271,25 +345,93 @@ model Score {
 }
 
 // ===========================================
-// SKINS (Per-round skins tracking)
+// WAGER CONFIG (Skins and future wager types)
 // ===========================================
 
-model Skin {
-  id        String   @id @default(cuid())
-  roundId   String
-  round     Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  holeId    String
-  hole      Hole     @relation(fields: [holeId], references: [id])
-  
-  // Winner info (null if no skin awarded due to tie)
-  winnerId  String?
-  winner    Player?  @relation(fields: [winnerId], references: [id])
-  netScore  Int?
-  value     Float?   // Dollar value of this skin
-  
-  createdAt DateTime @default(now())
-  
-  @@unique([roundId, holeId])
+model WagerConfig {
+  id          String      @id @default(cuid())
+  tripId      String
+  trip        Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  type        WagerType   @default(SKINS)
+  entryFee    Float                               // Per-person buy-in
+  carryover   Boolean     @default(false)         // Do ties carry over?
+  scope       WagerScope  @default(PER_ROUND)     // Per round or cumulative
+  isActive    Boolean     @default(true)
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  results     WagerResult[]
+}
+
+enum WagerType {
+  SKINS
+  NASSAU
+  CUSTOM
+}
+
+enum WagerScope {
+  PER_ROUND
+  TOURNAMENT
+}
+
+// ===========================================
+// WAGER RESULTS (Per hole outcomes)
+// ===========================================
+
+model WagerResult {
+  id              String      @id @default(cuid())
+  wagerConfigId   String
+  wagerConfig     WagerConfig @relation(fields: [wagerConfigId], references: [id], onDelete: Cascade)
+  roundId         String
+  round           Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  holeId          String
+  hole            Hole        @relation(fields: [holeId], references: [id])
+
+  // Winner info (null if no winner due to tie)
+  winnerId        String?
+  winner          TripPlayer? @relation("SkinWinner", fields: [winnerId], references: [id])
+  netScore        Int?
+  value           Float?                          // Dollar value — calculated: pot / skins awarded
+
+  createdAt       DateTime    @default(now())
+
+  @@unique([wagerConfigId, roundId, holeId])
+}
+
+// ===========================================
+// SIDE GAMES (CTP, Longest Drive, Longest Putt)
+// ===========================================
+
+model SideGame {
+  id            String        @id @default(cuid())
+  roundId       String
+  round         Round         @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  holeId        String
+  hole          Hole          @relation(fields: [holeId], references: [id])
+
+  type          SideGameType
+  winnerId      String?
+  winner        TripPlayer?   @relation("SideGameWinner", fields: [winnerId], references: [id])
+  measurement   Float?                            // Distance value
+  unit          MeasurementUnit @default(FEET)
+
+  createdAt     DateTime      @default(now())
+
+  @@unique([roundId, holeId, type])
+}
+
+enum SideGameType {
+  CLOSEST_PIN
+  LONGEST_DRIVE
+  LONGEST_PUTT
+}
+
+enum MeasurementUnit {
+  FEET
+  YARDS
+  INCHES
 }
 
 // ===========================================
@@ -300,7 +442,7 @@ model MVPConfig {
   id                  String @id @default(cuid())
   tripId              String @unique
   trip                Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  
+
   // Category weights (should sum to 1.0)
   matchPointsWeight   Float  @default(0.24)
   holesWonWeight      Float  @default(0.24)
@@ -309,7 +451,7 @@ model MVPConfig {
   skinsWeight         Float  @default(0.04)
   birdiesWeight       Float  @default(0)
   eaglesWeight        Float  @default(0)
-  
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
