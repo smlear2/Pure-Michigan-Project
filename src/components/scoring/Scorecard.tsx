@@ -1,6 +1,6 @@
 'use client'
 
-import { MatchState } from '@/lib/golf'
+import { MatchState, holeWinner } from '@/lib/golf'
 
 interface HoleData {
   number: number
@@ -69,6 +69,55 @@ export default function Scorecard({
     return ''
   }
 
+  function scoreIndicator(score: number, par: number): React.CSSProperties | undefined {
+    const diff = score - par
+    if (diff <= -2) return {
+      width: '18px', height: '18px', borderRadius: '50%',
+      border: '1px solid #facc15', outline: '1px solid #facc15', outlineOffset: '1.5px',
+    }
+    if (diff === -1) return {
+      width: '18px', height: '18px', borderRadius: '50%',
+      border: '1px solid #34d399',
+    }
+    if (diff === 1) return {
+      width: '18px', height: '18px',
+      border: '1px solid #f87171',
+    }
+    if (diff >= 2) return {
+      width: '18px', height: '18px',
+      border: '1px solid #ef4444', outline: '1px solid #ef4444', outlineOffset: '1.5px',
+    }
+    return undefined
+  }
+
+  // Running match status per hole (for non-STROKEPLAY)
+  const runningMatchStatus = (() => {
+    if (format === 'STROKEPLAY') return []
+    const statuses: { text: string; sideColor: string | null }[] = []
+    let lead = 0
+    for (const h of holes) {
+      let s1Net: number | null, s2Net: number | null
+      if (showBestBall) {
+        s1Net = side1.bestBall?.[h.number - 1] ?? null
+        s2Net = side2.bestBall?.[h.number - 1] ?? null
+      } else {
+        s1Net = side1.players[0]?.netScores[h.number - 1] ?? null
+        s2Net = side2.players[0]?.netScores[h.number - 1] ?? null
+      }
+      const result = holeWinner(s1Net, s2Net)
+      if (result === null) {
+        statuses.push({ text: '', sideColor: null })
+      } else {
+        if (result === 'SIDE1') lead++
+        else if (result === 'SIDE2') lead--
+        if (lead === 0) statuses.push({ text: 'AS', sideColor: null })
+        else if (lead > 0) statuses.push({ text: `${lead}UP`, sideColor: side1.color })
+        else statuses.push({ text: `${Math.abs(lead)}UP`, sideColor: side2.color })
+      }
+    }
+    return statuses
+  })()
+
   function renderNineHoles(nineHoles: HoleData[], label: string) {
     const startIdx = nineHoles[0]?.number === 1 ? 0 : 9
     const totalPar = nineHoles.reduce((sum, h) => sum + h.par, 0)
@@ -113,8 +162,12 @@ export default function Scorecard({
                     const score = player.scores[h.number - 1]
                     const isStrokeHole = player.strokeHoles.includes(h.number)
                     return (
-                      <td key={h.number} className={`text-center py-1 px-1 ${scoreColor(score, h.par)} ${scoreBg(score, h.par)}`}>
-                        {score ?? '-'}
+                      <td key={h.number} className={`text-center py-1 px-1 ${scoreColor(score, h.par)}`}>
+                        {score !== null ? (
+                          <span className="inline-flex items-center justify-center" style={scoreIndicator(score, h.par)}>
+                            {score}
+                          </span>
+                        ) : '-'}
                         {isStrokeHole && score !== null && <span className="text-amber-400 text-[8px] align-super">●</span>}
                       </td>
                     )
@@ -160,8 +213,12 @@ export default function Scorecard({
                     const score = player.scores[h.number - 1]
                     const isStrokeHole = player.strokeHoles.includes(h.number)
                     return (
-                      <td key={h.number} className={`text-center py-1 px-1 ${scoreColor(score, h.par)} ${scoreBg(score, h.par)}`}>
-                        {score ?? '-'}
+                      <td key={h.number} className={`text-center py-1 px-1 ${scoreColor(score, h.par)}`}>
+                        {score !== null ? (
+                          <span className="inline-flex items-center justify-center" style={scoreIndicator(score, h.par)}>
+                            {score}
+                          </span>
+                        ) : '-'}
                         {isStrokeHole && score !== null && <span className="text-amber-400 text-[8px] align-super">●</span>}
                       </td>
                     )
@@ -188,6 +245,26 @@ export default function Scorecard({
                 <td className="text-center py-1 px-2 font-semibold text-slate-300">
                   {nineHoles.reduce((s, h) => s + (side2.bestBall![h.number - 1] ?? 0), 0) || '-'}
                 </td>
+              </tr>
+            )}
+
+            {/* Running match status */}
+            {format !== 'STROKEPLAY' && runningMatchStatus.length > 0 && (
+              <tr className="border-t border-slate-600">
+                <td className="py-1 px-2 text-slate-400 font-semibold text-[10px]">Match</td>
+                {nineHoles.map(h => {
+                  const status = runningMatchStatus[h.number - 1]
+                  return (
+                    <td
+                      key={h.number}
+                      className={`text-center py-1 px-1 text-[10px] font-bold ${!status?.sideColor ? 'text-slate-400' : ''}`}
+                      style={status?.sideColor ? { color: status.sideColor } : undefined}
+                    >
+                      {status?.text || ''}
+                    </td>
+                  )
+                })}
+                <td className="text-center py-1 px-2"></td>
               </tr>
             )}
           </tbody>
@@ -229,6 +306,88 @@ export default function Scorecard({
       {back9.length > 0 && (
         <div className="px-2">
           {renderNineHoles(back9, 'IN')}
+        </div>
+      )}
+
+      {/* 18-hole totals */}
+      {back9.length > 0 && (
+        <div className="px-2 pb-2">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs" style={monoFont}>
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left py-1 px-2 text-slate-500 w-24">TOTAL</th>
+                  <th className="text-center py-1 px-2 text-slate-400">OUT</th>
+                  <th className="text-center py-1 px-2 text-slate-400">IN</th>
+                  <th className="text-center py-1 px-2 text-slate-400">TOT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {side1.players.map(player => {
+                  const outTotal = front9.reduce((s, h) => s + (player.scores[h.number - 1] ?? 0), 0)
+                  const inTotal = back9.reduce((s, h) => s + (player.scores[h.number - 1] ?? 0), 0)
+                  const hasOut = front9.some(h => player.scores[h.number - 1] !== null)
+                  const hasIn = back9.some(h => player.scores[h.number - 1] !== null)
+                  return (
+                    <tr key={player.id} className="border-b border-slate-800/50">
+                      <td className="py-1 px-2 truncate max-w-[96px]">
+                        <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: side1.color }} />
+                        <span className="text-slate-300">{player.name.split(' ')[0]}</span>
+                      </td>
+                      <td className="text-center py-1 px-2 text-slate-400">{hasOut ? outTotal : '-'}</td>
+                      <td className="text-center py-1 px-2 text-slate-400">{hasIn ? inTotal : '-'}</td>
+                      <td className="text-center py-1 px-2 text-white font-semibold">{hasOut || hasIn ? outTotal + inTotal : '-'}</td>
+                    </tr>
+                  )
+                })}
+                {showBestBall && side1.bestBall && (
+                  <tr className="border-b border-slate-700">
+                    <td className="py-1 px-2 text-slate-500 italic">Best Ball</td>
+                    <td className="text-center py-1 px-2 text-slate-400 font-semibold">
+                      {front9.reduce((s, h) => s + (side1.bestBall![h.number - 1] ?? 0), 0) || '-'}
+                    </td>
+                    <td className="text-center py-1 px-2 text-slate-400 font-semibold">
+                      {back9.reduce((s, h) => s + (side1.bestBall![h.number - 1] ?? 0), 0) || '-'}
+                    </td>
+                    <td className="text-center py-1 px-2 text-white font-semibold">
+                      {holes.reduce((s, h) => s + (side1.bestBall![h.number - 1] ?? 0), 0) || '-'}
+                    </td>
+                  </tr>
+                )}
+                {side2.players.map(player => {
+                  const outTotal = front9.reduce((s, h) => s + (player.scores[h.number - 1] ?? 0), 0)
+                  const inTotal = back9.reduce((s, h) => s + (player.scores[h.number - 1] ?? 0), 0)
+                  const hasOut = front9.some(h => player.scores[h.number - 1] !== null)
+                  const hasIn = back9.some(h => player.scores[h.number - 1] !== null)
+                  return (
+                    <tr key={player.id} className="border-b border-slate-800/50">
+                      <td className="py-1 px-2 truncate max-w-[96px]">
+                        <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: side2.color }} />
+                        <span className="text-slate-300">{player.name.split(' ')[0]}</span>
+                      </td>
+                      <td className="text-center py-1 px-2 text-slate-400">{hasOut ? outTotal : '-'}</td>
+                      <td className="text-center py-1 px-2 text-slate-400">{hasIn ? inTotal : '-'}</td>
+                      <td className="text-center py-1 px-2 text-white font-semibold">{hasOut || hasIn ? outTotal + inTotal : '-'}</td>
+                    </tr>
+                  )
+                })}
+                {showBestBall && side2.bestBall && (
+                  <tr className="border-b border-slate-700">
+                    <td className="py-1 px-2 text-slate-500 italic">Best Ball</td>
+                    <td className="text-center py-1 px-2 text-slate-400 font-semibold">
+                      {front9.reduce((s, h) => s + (side2.bestBall![h.number - 1] ?? 0), 0) || '-'}
+                    </td>
+                    <td className="text-center py-1 px-2 text-slate-400 font-semibold">
+                      {back9.reduce((s, h) => s + (side2.bestBall![h.number - 1] ?? 0), 0) || '-'}
+                    </td>
+                    <td className="text-center py-1 px-2 text-white font-semibold">
+                      {holes.reduce((s, h) => s + (side2.bestBall![h.number - 1] ?? 0), 0) || '-'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

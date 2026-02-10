@@ -90,6 +90,7 @@ export default function ScoreEntryPage() {
   const autoAdvanceTimer = useRef<NodeJS.Timeout | null>(null)
   const savedHoles = useRef<Set<string>>(new Set())
   const savingRef = useRef(false)
+  const userEditedHoles = useRef<Set<string>>(new Set())
 
   // Load match data
   useEffect(() => {
@@ -227,7 +228,8 @@ export default function ScoreEntryPage() {
 
   // Handle score entry for a player
   const handleScore = useCallback((matchPlayerId: string, holeId: string, score: number) => {
-    // Clear saved flag so edits re-trigger a save
+    // Mark as user-edited so auto-advance fires, and clear saved flag for re-save
+    userEditedHoles.current.add(holeId)
     savedHoles.current.delete(holeId)
     setLocalScores(prev => ({
       ...prev,
@@ -270,7 +272,7 @@ export default function ScoreEntryPage() {
 
     const allScored = match.players.every(p => localScores[p.id]?.[currentHoleData.id] !== undefined)
 
-    if (allScored) {
+    if (allScored && userEditedHoles.current.has(currentHoleData.id)) {
       // Save to server (ref-guarded, won't fire twice for same hole)
       saveHoleScores(currentHoleData.id, localScores)
 

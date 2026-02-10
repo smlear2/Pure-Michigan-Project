@@ -289,6 +289,10 @@ model Match {
   side1Points  Float       @default(0)           // Dynamic — not hardcoded to any team name
   side2Points  Float       @default(0)
 
+  // Attestation — both sides must confirm scores post-round
+  side1Attested Boolean    @default(false)
+  side2Attested Boolean    @default(false)
+
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 

@@ -162,6 +162,22 @@ export default function MatchScorecardPage() {
             </Link>
           </div>
         )}
+
+        {/* Navigation */}
+        <div className="mt-6 flex items-center justify-center gap-3" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+          <Link
+            href={`/trips/${tripId}/rounds/${roundId}`}
+            className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm transition-colors"
+          >
+            Back to Round
+          </Link>
+          <Link
+            href={`/trips/${tripId}`}
+            className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm transition-colors"
+          >
+            View Standings
+          </Link>
+        </div>
       </div>
     </div>
   )

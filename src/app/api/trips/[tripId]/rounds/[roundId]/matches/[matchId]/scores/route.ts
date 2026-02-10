@@ -156,6 +156,14 @@ export async function PUT(
         })
       }
 
+      // Clear attestation — any score edit requires both sides to re-confirm
+      if (match.side1Attested || match.side2Attested) {
+        await tx.match.update({
+          where: { id: params.matchId },
+          data: { side1Attested: false, side2Attested: false },
+        })
+      }
+
       return results
     })
 
