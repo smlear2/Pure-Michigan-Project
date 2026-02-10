@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Fraunces, DM_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/ThemeProvider'
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { Nav } from '@/components/Nav'
 import './globals.css'
 
 const fraunces = Fraunces({
@@ -42,10 +42,7 @@ export default function RootLayout({
               className="fixed inset-0 opacity-[0.015] pointer-events-none hidden dark:block"
               style={{ backgroundImage: 'url(/grain.svg)' }}
             />
-            {/* Global Theme Toggle */}
-            <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50">
-              <ThemeToggle />
-            </div>
+            <Nav />
             {children}
           </div>
         </ThemeProvider>
