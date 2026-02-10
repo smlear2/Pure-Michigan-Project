@@ -4,14 +4,14 @@
 // ===========================================
 
 // Match formats available
-export type MatchFormat = 
-  | 'FOURBALL'    // Best ball: 2v2, each plays own ball, take best score
-  | 'FOURSOMES'   // Alternate shot: 2v2, one ball per team
-  | 'SCRAMBLE'    // Best shot: team plays from best position
-  | 'SINGLES'     // 1v1 match play
-  | 'STROKEPLAY'  // Individual stroke play
-  | 'STABLEFORD'  // Points-based scoring
-  | 'CHAPMAN';    // Modified alternate shot
+export type MatchFormat =
+  | 'FOURBALL'          // Best ball: 2v2, each plays own ball, take best score
+  | 'FOURSOMES'         // Alternate shot: 2v2, one ball per team
+  | 'MODIFIED_ALT_SHOT' // Both tee off, pick best drive, alternate from there
+  | 'SCRAMBLE'          // Best shot: team plays from best position
+  | 'SHAMBLE'           // Best drive, then everyone plays own ball, best ball
+  | 'SINGLES'           // 1v1 match play
+  | 'STROKEPLAY';       // Individual stroke play
 
 export type MatchStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETE';
 
@@ -339,30 +339,30 @@ export interface CreateRoundInput {
 export const formatLabels: Record<MatchFormat, string> = {
   FOURBALL: 'Fourball (Best Ball)',
   FOURSOMES: 'Foursomes (Alternate Shot)',
+  MODIFIED_ALT_SHOT: 'Modified Alternate Shot',
   SCRAMBLE: 'Scramble',
+  SHAMBLE: 'Shamble',
   SINGLES: 'Singles',
   STROKEPLAY: 'Stroke Play',
-  STABLEFORD: 'Stableford',
-  CHAPMAN: 'Chapman/Pinehurst',
 };
 
 export const formatDescriptions: Record<MatchFormat, string> = {
   FOURBALL: '2v2 - Each player plays their own ball, best score counts',
   FOURSOMES: '2v2 - Partners alternate shots on a single ball',
+  MODIFIED_ALT_SHOT: 'Both tee off, pick best drive, alternate from there',
   SCRAMBLE: 'Team plays from best shot each time',
+  SHAMBLE: 'Best drive, then everyone plays own ball, best ball',
   SINGLES: '1v1 individual match play',
   STROKEPLAY: 'Individual total strokes (lowest wins)',
-  STABLEFORD: 'Points awarded based on score vs par',
-  CHAPMAN: 'Both hit, switch balls, then alternate to finish',
 };
 
 // How many players per side for each format
 export const formatPlayerCount: Record<MatchFormat, { min: number; max: number }> = {
   FOURBALL: { min: 2, max: 2 },
   FOURSOMES: { min: 2, max: 2 },
+  MODIFIED_ALT_SHOT: { min: 2, max: 2 },
   SCRAMBLE: { min: 2, max: 4 },
+  SHAMBLE: { min: 2, max: 4 },
   SINGLES: { min: 1, max: 1 },
   STROKEPLAY: { min: 1, max: 4 },
-  STABLEFORD: { min: 1, max: 4 },
-  CHAPMAN: { min: 2, max: 2 },
 };

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -44,6 +44,9 @@ interface SearchResult {
 
 export default function CoursesSetupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tripId = searchParams.get('tripId')
+
   const [courses, setCourses] = useState<Course[]>([])
 
   // Loading states
@@ -63,12 +66,13 @@ export default function CoursesSetupPage() {
   const [selectedCourse, setSelectedCourse] = useState<SearchResult | null>(null)
   const [selectedTeeIndices, setSelectedTeeIndices] = useState<Set<number>>(new Set())
 
-  // Fetch courses from API
+  // Fetch trip-linked courses from API
   const fetchCourses = useCallback(async () => {
+    if (!tripId) return
     try {
       setIsLoading(true)
       setError(null)
-      const res = await fetch('/api/courses')
+      const res = await fetch(`/api/trips/${tripId}/courses`)
       if (!res.ok) throw new Error('Failed to load courses')
       const json = await res.json()
       setCourses(json.data)
@@ -77,11 +81,15 @@ export default function CoursesSetupPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [tripId])
 
   useEffect(() => {
+    if (!tripId) {
+      router.push('/setup/trip')
+      return
+    }
     fetchCourses()
-  }, [fetchCourses])
+  }, [tripId, router, fetchCourses])
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -183,7 +191,20 @@ export default function CoursesSetupPage() {
       }
 
       const json = await res.json()
-      setCourses(prev => [...prev, json.data])
+      const savedCourse = json.data
+
+      // Link the course to this trip via the junction table
+      const linkRes = await fetch(`/api/trips/${tripId}/courses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId: savedCourse.id }),
+      })
+
+      if (!linkRes.ok) {
+        throw new Error('Course saved but failed to link to trip')
+      }
+
+      setCourses(prev => [...prev, savedCourse])
       setSelectedCourse(null)
       setSelectedTeeIndices(new Set())
     } catch (err) {
@@ -193,19 +214,23 @@ export default function CoursesSetupPage() {
     }
   }
 
-  // Delete course
-  const deleteCourse = async (id: string) => {
-    if (!confirm('Remove this course?')) return
+  // Unlink course from this trip (does not delete the global course)
+  const removeCourse = async (courseId: string) => {
+    if (!confirm('Remove this course from the trip?')) return
 
     try {
-      const res = await fetch(`/api/courses/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/trips/${tripId}/courses`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+      })
       if (!res.ok) {
         const json = await res.json()
-        throw new Error(json.error?.message || 'Failed to delete course')
+        throw new Error(json.error?.message || 'Failed to remove course')
       }
-      setCourses(prev => prev.filter(c => c.id !== id))
+      setCourses(prev => prev.filter(c => c.id !== courseId))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete')
+      alert(err instanceof Error ? err.message : 'Failed to remove')
     }
   }
 
@@ -335,7 +360,7 @@ export default function CoursesSetupPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="mb-6">
           <button
-            onClick={() => router.push('/setup/players')}
+            onClick={() => router.push(`/setup/players?tripId=${tripId}`)}
             className="text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors text-sm flex items-center gap-1"
             style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
           >
@@ -455,7 +480,7 @@ export default function CoursesSetupPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => deleteCourse(course.id)}
+                    onClick={() => removeCourse(course.id)}
                     className="text-red-500 hover:text-red-700 px-2 text-sm transition-colors"
                   >
                     Remove
@@ -484,13 +509,13 @@ export default function CoursesSetupPage() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => router.push('/setup/players')}
+                onClick={() => router.push(`/setup/players?tripId=${tripId}`)}
                 className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 ← Back
               </Button>
               <Button
-                onClick={() => router.push('/setup/rounds')}
+                onClick={() => router.push(`/setup/rounds?tripId=${tripId}`)}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 Save & Continue →

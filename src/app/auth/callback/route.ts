@@ -42,13 +42,30 @@ export async function GET(request: Request) {
   })
 
   if (!existing) {
-    await prisma.user.create({
-      data: {
-        supabaseId: data.user.id,
-        email: data.user.email!,
-        name: data.user.user_metadata?.name || data.user.email!.split('@')[0],
-      },
+    // Check if a placeholder user was created for this email (e.g., by an organizer adding them to a trip)
+    const pendingUser = await prisma.user.findUnique({
+      where: { email: data.user.email! },
     })
+
+    if (pendingUser && pendingUser.supabaseId.startsWith('pending-')) {
+      // Merge: update the placeholder with the real Supabase ID
+      await prisma.user.update({
+        where: { id: pendingUser.id },
+        data: {
+          supabaseId: data.user.id,
+          name: data.user.user_metadata?.name || pendingUser.name,
+        },
+      })
+    } else if (!pendingUser) {
+      // No existing user at all — create a new one
+      await prisma.user.create({
+        data: {
+          supabaseId: data.user.id,
+          email: data.user.email!,
+          name: data.user.user_metadata?.name || data.user.email!.split('@')[0],
+        },
+      })
+    }
   }
 
   return NextResponse.redirect(`${origin}/`)

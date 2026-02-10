@@ -70,6 +70,12 @@ model Trip {
   // Handicap
   handicapFreezeDate DateTime?                   // Handicaps lock on this date (defaults to startDate)
 
+  // Defending champion (team retains on tie)
+  defendingChampionTeamId String?
+
+  // Max stroke cap (e.g., 3 = triple bogey max, null = no cap)
+  defaultMaxScore     Int?                         // Scoring engine caps gross at par + this value
+
   // Skins defaults (can be overridden per round via WagerConfig)
   defaultSkinsEntryFee Float  @default(20)
   defaultSkinsCarryover Boolean @default(false)
@@ -104,6 +110,7 @@ model TripPlayer {
   role            TripRole     @default(PLAYER)
   handicapAtTime  Float                          // Snapshot — syncs with User.handicapIndex until freeze date, then locks
   isActive        Boolean      @default(true)
+  canVerifyScores Boolean      @default(false)   // Can approve/verify scores post-round (organizer always can)
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -224,6 +231,7 @@ model Round {
 
   // Round settings
   skinsEnabled       Boolean            @default(true)
+  maxScore           Int?                          // Overrides Trip.defaultMaxScore for this round (null = use trip default)
   isComplete         Boolean            @default(false)
 
   // Verification

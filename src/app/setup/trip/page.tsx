@@ -1,12 +1,18 @@
 'use client'
 
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export default function TripSetupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tripId = searchParams.get('tripId')
+
+  const [loading, setLoading] = useState(!!tripId)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -15,25 +21,42 @@ export default function TripSetupPage() {
     endDate: '',
     location: '',
     description: '',
-    numberOfGolfers: '',
-    numberOfRounds: '',
-    holesPerRound: '18' as '9' | '18',
-    eventFormat: 'match' as 'match' | 'stroke', // match play or stroke play
     isTeamEvent: true,
     pointsForWin: 1,
     pointsForHalf: 0.5,
-    defendingChampion: '', // Team ID of defending champion (retains on tie)
-    strokePlayScoring: 'both' as 'gross' | 'net' | 'both', // for stroke play events
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Load existing trip if editing
+  useEffect(() => {
+    if (!tripId) return
+    fetch(`/api/trips/${tripId}`)
+      .then((res) => res.json())
+      .then(({ data }) => {
+        if (data) {
+          setFormData({
+            name: data.name || '',
+            year: data.year || new Date().getFullYear(),
+            startDate: data.startDate ? data.startDate.split('T')[0] : '',
+            endDate: data.endDate ? data.endDate.split('T')[0] : '',
+            location: data.location || '',
+            description: data.description || '',
+            isTeamEvent: data.isTeamEvent ?? true,
+            pointsForWin: data.pointsForWin ?? 1,
+            pointsForHalf: data.pointsForHalf ?? 0.5,
+          })
+        }
+      })
+      .catch(() => setError('Failed to load trip'))
+      .finally(() => setLoading(false))
+  }, [tripId])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
-    setFormData(prev => {
+    setFormData((prev) => {
       const updated = {
         ...prev,
-        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+        [name]: type === 'number' ? Number(value) : value,
       }
-      // When start date changes, update end date if it's empty or before start date
       if (name === 'startDate' && value) {
         if (!prev.endDate || prev.endDate < value) {
           updated.endDate = value
@@ -43,10 +66,52 @@ export default function TripSetupPage() {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    localStorage.setItem('currentTrip', JSON.stringify(formData))
-    router.push('/setup/teams')
+    setSaving(true)
+    setError('')
+
+    try {
+      const payload = {
+        ...formData,
+        year: Number(formData.year),
+        pointsForWin: Number(formData.pointsForWin),
+        pointsForHalf: Number(formData.pointsForHalf),
+      }
+
+      const url = tripId ? `/api/trips/${tripId}` : '/api/trips'
+      const method = tripId ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        setError(json.error?.message || 'Failed to save trip')
+        return
+      }
+
+      const savedTripId = tripId || json.data.id
+      router.push(`/setup/teams?tripId=${savedTripId}`)
+    } catch {
+      setError('Failed to save trip')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 text-center">
+        <p className="text-slate-500 dark:text-slate-400" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+          Loading trip...
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -64,15 +129,27 @@ export default function TripSetupPage() {
 
         <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-800/50 rounded-xl overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-800/50">
-            <h1 className="text-2xl sm:text-3xl font-light text-slate-900 dark:text-white mb-2" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
-              Create Your Trip
+            <h1
+              className="text-2xl sm:text-3xl font-light text-slate-900 dark:text-white mb-2"
+              style={{ fontFamily: 'var(--font-fraunces), serif' }}
+            >
+              {tripId ? 'Edit Trip' : 'Create Your Trip'}
             </h1>
-            <p className="text-slate-600 dark:text-gray-400 text-sm" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+            <p
+              className="text-slate-600 dark:text-gray-400 text-sm"
+              style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+            >
               Enter the basic details for your golf trip. You can change these later.
             </p>
           </div>
 
           <div className="p-6">
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 text-sm">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Trip Name */}
               <div>
@@ -151,77 +228,6 @@ export default function TripSetupPage() {
                 />
               </div>
 
-              {/* Event Size */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-                    Number of Golfers *
-                  </label>
-                  <Input
-                    name="numberOfGolfers"
-                    type="number"
-                    min="2"
-                    value={formData.numberOfGolfers}
-                    onChange={handleChange}
-                    placeholder="e.g., 12"
-                    required
-                    className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-                    Number of Rounds *
-                  </label>
-                  <Input
-                    name="numberOfRounds"
-                    type="number"
-                    min="1"
-                    value={formData.numberOfRounds}
-                    onChange={handleChange}
-                    placeholder="e.g., 4"
-                    required
-                    className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
-                    Holes Per Round *
-                  </label>
-                  <div className="flex gap-2">
-                    <label className={`flex-1 flex items-center justify-center gap-2 cursor-pointer p-2.5 rounded-lg border transition-colors ${
-                      formData.holesPerRound === '9'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-700 dark:text-gray-300 hover:border-emerald-500/50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="holesPerRound"
-                        value="9"
-                        checked={formData.holesPerRound === '9'}
-                        onChange={handleChange}
-                        className="sr-only"
-                      />
-                      <span className="font-medium">9</span>
-                    </label>
-                    <label className={`flex-1 flex items-center justify-center gap-2 cursor-pointer p-2.5 rounded-lg border transition-colors ${
-                      formData.holesPerRound === '18'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-700 dark:text-gray-300 hover:border-emerald-500/50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="holesPerRound"
-                        value="18"
-                        checked={formData.holesPerRound === '18'}
-                        onChange={handleChange}
-                        className="sr-only"
-                      />
-                      <span className="font-medium">18</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
               {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
@@ -237,106 +243,59 @@ export default function TripSetupPage() {
                 />
               </div>
 
-              {/* Event Format - Match Play vs Stroke Play */}
-              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/30">
-                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">
-                  Event Format
-                </label>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                    formData.eventFormat === 'match'
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="eventFormat"
-                      checked={formData.eventFormat === 'match'}
-                      onChange={() => setFormData(prev => ({ ...prev, eventFormat: 'match' }))}
-                      className="w-4 h-4 mt-0.5 accent-emerald-600"
-                    />
-                    <div>
-                      <div className="font-medium text-slate-900 dark:text-white">Match Play</div>
-                      <div className="text-sm text-slate-500 dark:text-gray-400">
-                        Compete to win individual holes
-                      </div>
-                    </div>
-                  </label>
-                  <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                    formData.eventFormat === 'stroke'
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="eventFormat"
-                      checked={formData.eventFormat === 'stroke'}
-                      onChange={() => setFormData(prev => ({ ...prev, eventFormat: 'stroke' }))}
-                      className="w-4 h-4 mt-0.5 accent-emerald-600"
-                    />
-                    <div>
-                      <div className="font-medium text-slate-900 dark:text-white">Stroke Play</div>
-                      <div className="text-sm text-slate-500 dark:text-gray-400">
-                        Total strokes count, lowest gross and/or net score wins
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Team vs Individual */}
+              {/* Competition Type */}
               <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/30">
                 <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">
                   Competition Type
                 </label>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                    formData.isTeamEvent
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                  }`}>
+                  <label
+                    className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
+                      formData.isTeamEvent
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="isTeamEvent"
                       checked={formData.isTeamEvent === true}
-                      onChange={() => setFormData(prev => ({ ...prev, isTeamEvent: true }))}
+                      onChange={() => setFormData((prev) => ({ ...prev, isTeamEvent: true }))}
                       className="w-4 h-4 mt-0.5 accent-emerald-600"
                     />
                     <div>
                       <div className="font-medium text-slate-900 dark:text-white">Team Event</div>
                       <div className="text-sm text-slate-500 dark:text-gray-400">
-                        {formData.eventFormat === 'match'
-                          ? 'Players compete in teams (like Ryder Cup)'
-                          : 'Combined team scores'}
+                        Players compete in teams (like Ryder Cup)
                       </div>
                     </div>
                   </label>
-                  <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                    !formData.isTeamEvent
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                  }`}>
+                  <label
+                    className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
+                      !formData.isTeamEvent
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="isTeamEvent"
                       checked={formData.isTeamEvent === false}
-                      onChange={() => setFormData(prev => ({ ...prev, isTeamEvent: false }))}
+                      onChange={() => setFormData((prev) => ({ ...prev, isTeamEvent: false }))}
                       className="w-4 h-4 mt-0.5 accent-emerald-600"
                     />
                     <div>
                       <div className="font-medium text-slate-900 dark:text-white">Individual</div>
                       <div className="text-sm text-slate-500 dark:text-gray-400">
-                        {formData.eventFormat === 'match'
-                          ? '1v1 bracket or round-robin matches'
-                          : 'Every player for themselves'}
+                        Every player for themselves
                       </div>
                     </div>
                   </label>
                 </div>
               </div>
 
-              {/* Points per match (only for match play) */}
-              {formData.eventFormat === 'match' && (
+              {/* Points per match (only for team events) */}
+              {formData.isTeamEvent && (
                 <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/30">
                   <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">
                     Points Per Match
@@ -374,68 +333,6 @@ export default function TripSetupPage() {
                 </div>
               )}
 
-              {/* Stroke Play Options */}
-              {formData.eventFormat === 'stroke' && (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/30">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">
-                    Scoring Type
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                      formData.strokePlayScoring === 'gross'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="strokePlayScoring"
-                        checked={formData.strokePlayScoring === 'gross'}
-                        onChange={() => setFormData(prev => ({ ...prev, strokePlayScoring: 'gross' }))}
-                        className="w-4 h-4 accent-emerald-600"
-                      />
-                      <div>
-                        <div className="font-medium text-slate-900 dark:text-white">Gross Only</div>
-                        <div className="text-xs text-slate-500 dark:text-gray-400">No handicaps</div>
-                      </div>
-                    </label>
-                    <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                      formData.strokePlayScoring === 'net'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="strokePlayScoring"
-                        checked={formData.strokePlayScoring === 'net'}
-                        onChange={() => setFormData(prev => ({ ...prev, strokePlayScoring: 'net' }))}
-                        className="w-4 h-4 accent-emerald-600"
-                      />
-                      <div>
-                        <div className="font-medium text-slate-900 dark:text-white">Net Only</div>
-                        <div className="text-xs text-slate-500 dark:text-gray-400">With handicaps</div>
-                      </div>
-                    </label>
-                    <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg border flex-1 transition-colors ${
-                      formData.strokePlayScoring === 'both'
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-emerald-500/50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="strokePlayScoring"
-                        checked={formData.strokePlayScoring === 'both'}
-                        onChange={() => setFormData(prev => ({ ...prev, strokePlayScoring: 'both' }))}
-                        className="w-4 h-4 accent-emerald-600"
-                      />
-                      <div>
-                        <div className="font-medium text-slate-900 dark:text-white">Both</div>
-                        <div className="text-xs text-slate-500 dark:text-gray-400">Gross & Net winners</div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              )}
-
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-4">
                 <Button
@@ -448,9 +345,10 @@ export default function TripSetupPage() {
                 </Button>
                 <Button
                   type="submit"
+                  disabled={saving}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  Save & Continue →
+                  {saving ? 'Saving...' : 'Save & Continue →'}
                 </Button>
               </div>
             </form>
