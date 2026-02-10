@@ -82,6 +82,7 @@ export default function ScoreEntryPage() {
   const [currentHole, setCurrentHole] = useState(1)
   const [saving, setSaving] = useState(false)
   const [flashConfirm, setFlashConfirm] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
 
   // Local score state: { [matchPlayerId]: { [holeId]: grossScore } }
   const [localScores, setLocalScores] = useState<Record<string, Record<string, number>>>({})
@@ -237,6 +238,28 @@ export default function ScoreEntryPage() {
     }))
   }, [])
 
+  // Finalize the match — compute result and mark COMPLETE
+  const handleFinalize = useCallback(async () => {
+    if (finalizing) return
+    setFinalizing(true)
+    try {
+      const res = await fetch(
+        `/api/trips/${tripId}/rounds/${roundId}/matches/${matchId}/finalize`,
+        { method: 'POST' }
+      )
+      if (res.ok) {
+        router.push(`/trips/${tripId}/rounds/${roundId}/matches/${matchId}`)
+      } else {
+        const json = await res.json()
+        setError(json.error?.message || 'Failed to finalize match')
+        setFinalizing(false)
+      }
+    } catch {
+      setError('Failed to finalize match')
+      setFinalizing(false)
+    }
+  }, [finalizing, tripId, roundId, matchId, router])
+
   // Check if all players have scored current hole → auto-advance
   useEffect(() => {
     if (!match) return
@@ -282,6 +305,11 @@ export default function ScoreEntryPage() {
       if (allHaveScore) scoredHoles.add(hole.number)
     }
   }
+
+  // Check if all holes are complete
+  const allHolesScored = match ? holes.every(hole =>
+    match.players.every(p => localScores[p.id]?.[hole.id] !== undefined)
+  ) : false
 
   // Side info for status bar
   const side1Players = match?.players.filter(p => p.side === 1) ?? []
@@ -417,6 +445,30 @@ export default function ScoreEntryPage() {
             })}
         </div>
       </div>
+
+      {/* Finalize button — appears when all holes are scored */}
+      {allHolesScored && matchState && (
+        <div className="max-w-lg mx-auto px-4 py-6 text-center">
+          {matchState.resultText && (
+            <p className="text-white font-bold text-xl mb-2" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+              {matchState.resultText}
+            </p>
+          )}
+          <button
+            onClick={handleFinalize}
+            disabled={finalizing}
+            className={`
+              px-8 py-3 rounded-lg font-medium text-white transition-colors text-lg
+              ${finalizing ? 'bg-slate-700 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95'}
+            `}
+          >
+            {finalizing ? 'Finalizing...' : 'Finalize Match'}
+          </button>
+          <p className="text-slate-500 text-xs mt-2" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+            Saves the result and locks scores
+          </p>
+        </div>
+      )}
 
       {/* Match Status Bar */}
       {matchState && match.round.format !== 'STROKEPLAY' && (
