@@ -62,27 +62,41 @@ Convert localStorage-based setup wizard to database-backed API routes.
 
 ---
 
-## Sprint 5: Finances ⬜ NOT STARTED
+## Sprint 5: Finances ✅ COMPLETE
 
-Build AFTER Sprint 4 (scoring must be complete first).
+### Schema
+- [x] PaymentItem, PaymentRecord models (per-player payment tracking)
+- [x] Expense, ExpenseSplit models (shared expense splitting)
+- [x] ExpensePermission, PaymentStatus, SplitType enums
+- [x] Trip.expensePermission field (ORGANIZER_ONLY or ALL_PLAYERS)
+
+### Pure Functions + Tests
+- [x] `calculateExpenseSplits()` — EVEN_ALL, EVEN_SOME, CUSTOM, FULL_PAYBACK (6 tests)
+- [x] `simplifyDebts()` — greedy debt simplification algorithm (6 tests)
 
 ### Payment Schedule
-- [ ] Pre-trip invoicing: organizer creates due dates + amounts
-- [ ] Track payment status per player (paid / unpaid / partial)
-- [ ] Schema: `PaymentSchedule`, `PaymentRecord` models
+- [x] API: GET/POST payments, PUT/DELETE payment items, bulk update records
+- [x] PaymentScheduleTable — grid per item with per-player status (UNPAID/PARTIAL/PAID)
+- [x] Organizer: create items, delete items, toggle payment status
 
-### My Tab (Splitwise-style expense splitting)
-- [ ] Add expenses with split options: even-all, even-some, custom amounts, full payback
-- [ ] Configurable who can add expenses (organizer-only or all players)
-- [ ] Schema: `Expense`, `ExpenseSplit` models
+### My Tab (Expenses)
+- [x] API: GET/POST expenses, DELETE expense (organizer or payer)
+- [x] ExpenseList — cards with split breakdown, delete capability
+- [x] ExpenseForm — dynamic split type UI (even all/some, custom amounts, full payback)
+- [x] Configurable who can add expenses (per trip setting)
 
-### My Ledger
-- [ ] Gambling results aggregation: skins winnings, match bets, side games
-- [ ] Per-player running total
+### My Ledger (Gambling)
+- [x] API: GET ledger — per-player skins P&L with per-round breakdown
+- [x] GamblingLedger — table with skins won, money won, entry fees, net
 
 ### Net Settlement
-- [ ] Combine Tab + Ledger into net owed/owing per player
-- [ ] Detailed view (every line item) and simplified debt view (minimized transfers)
+- [x] API: GET settlement — combines payment + expense + gambling balances
+- [x] SettlementView — net balances table + simplified "who pays whom" cards
+- [x] BalanceBadge — green/red balance display component
+
+### Finances Hub
+- [x] Tab-based page: Payments | Expenses | Ledger | Settlement
+- [x] Finances card on trip dashboard
 
 ---
 

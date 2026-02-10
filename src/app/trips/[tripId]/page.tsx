@@ -99,6 +99,24 @@ export default function TripDashboardPage() {
           </div>
         )}
 
+        {/* Quick links */}
+        <div className="mb-6">
+          <Link
+            href={`/trips/${tripId}/finances`}
+            className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white font-medium">Finances</p>
+                <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
+                  Payments, expenses, gambling ledger & settlement
+                </p>
+              </div>
+              <span className="text-slate-600 text-sm">&rarr;</span>
+            </div>
+          </Link>
+        </div>
+
         {/* Rounds list */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-white mb-3" style={{ fontFamily: 'var(--font-fraunces), serif' }}>

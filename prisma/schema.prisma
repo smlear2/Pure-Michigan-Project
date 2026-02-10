@@ -80,6 +80,9 @@ model Trip {
   defaultSkinsEntryFee Float  @default(20)
   defaultSkinsCarryover Boolean @default(false)
 
+  // Expense permissions
+  expensePermission ExpensePermission @default(ORGANIZER_ONLY)
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -90,6 +93,8 @@ model Trip {
   rounds            Round[]
   mvpConfig         MVPConfig?
   wagerConfigs      WagerConfig[]
+  paymentItems      PaymentItem[]
+  expenses          Expense[]
 
   @@unique([name, year])
 }
@@ -120,6 +125,9 @@ model TripPlayer {
   scores          Score[]
   skinResults     WagerResult[]  @relation("SkinWinner")
   sideGameWins    SideGame[]     @relation("SideGameWinner")
+  paymentRecords  PaymentRecord[]
+  expensesPaid    Expense[]      @relation("ExpensePayer")
+  expenseSplits   ExpenseSplit[]
 
   @@unique([userId, tripId])
 }
@@ -466,4 +474,99 @@ model MVPConfig {
 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+// ===========================================
+// FINANCES — Payment Schedule, Expenses, Splits
+// ===========================================
+
+enum ExpensePermission {
+  ORGANIZER_ONLY
+  ALL_PLAYERS
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum SplitType {
+  EVEN_ALL
+  EVEN_SOME
+  CUSTOM
+  FULL_PAYBACK
+}
+
+// Organizer-created invoice line items (e.g., "Trip Fee: $200", "Lodging: $500")
+model PaymentItem {
+  id          String    @id @default(cuid())
+  tripId      String
+  trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  amount      Float
+  dueDate     DateTime?
+  sortOrder   Int       @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  payments    PaymentRecord[]
+}
+
+// Per-player payment status for each PaymentItem
+model PaymentRecord {
+  id              String        @id @default(cuid())
+  paymentItemId   String
+  paymentItem     PaymentItem   @relation(fields: [paymentItemId], references: [id], onDelete: Cascade)
+  tripPlayerId    String
+  tripPlayer      TripPlayer    @relation(fields: [tripPlayerId], references: [id], onDelete: Cascade)
+
+  amountPaid      Float         @default(0)
+  status          PaymentStatus @default(UNPAID)
+  paidAt          DateTime?
+  notes           String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([paymentItemId, tripPlayerId])
+}
+
+// Shared expense (Splitwise-style)
+model Expense {
+  id            String      @id @default(cuid())
+  tripId        String
+  trip          Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  description   String
+  amount        Float
+  date          DateTime    @default(now())
+
+  paidById      String
+  paidBy        TripPlayer  @relation("ExpensePayer", fields: [paidById], references: [id], onDelete: Cascade)
+
+  splitType     SplitType
+  category      String?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  splits        ExpenseSplit[]
+}
+
+// Per-player share of an expense
+model ExpenseSplit {
+  id              String      @id @default(cuid())
+  expenseId       String
+  expense         Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  tripPlayerId    String
+  tripPlayer      TripPlayer  @relation(fields: [tripPlayerId], references: [id], onDelete: Cascade)
+
+  amount          Float
+  isPayer         Boolean     @default(false)
+
+  @@unique([expenseId, tripPlayerId])
 }
