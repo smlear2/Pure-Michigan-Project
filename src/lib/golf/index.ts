@@ -22,3 +22,6 @@ export type { HoleResult, MatchState } from './match-play'
 
 export { calculateSkins } from './skins'
 export type { HoleSkinScore, SkinResult, SkinsResult } from './skins'
+
+export { calculateTilt } from './tilt'
+export type { TiltConfig, TiltHoleScore, TiltPlayerHole, TiltPlayerResult, TiltResult } from './tilt'

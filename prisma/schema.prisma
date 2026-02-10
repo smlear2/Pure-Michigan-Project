@@ -80,6 +80,10 @@ model Trip {
   defaultSkinsEntryFee Float  @default(20)
   defaultSkinsCarryover Boolean @default(false)
 
+  // TILT defaults
+  defaultTiltEntryFee  Float   @default(20)
+  defaultTiltCarryover Boolean @default(false)
+
   // Expense permissions
   expensePermission ExpensePermission @default(ORGANIZER_ONLY)
 
@@ -239,6 +243,7 @@ model Round {
 
   // Round settings
   skinsEnabled       Boolean            @default(true)
+  tiltEnabled        Boolean            @default(false)
   maxScore           Int?                          // Overrides Trip.defaultMaxScore for this round (null = use trip default)
   isComplete         Boolean            @default(false)
 
@@ -387,6 +392,7 @@ model WagerConfig {
 
 enum WagerType {
   SKINS
+  TILT
   NASSAU
   CUSTOM
 }

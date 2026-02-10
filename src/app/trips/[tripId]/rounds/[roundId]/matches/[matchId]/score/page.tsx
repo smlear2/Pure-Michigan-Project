@@ -12,8 +12,11 @@ import {
   receivesStroke,
   applyMaxScore,
   netScore,
+  calculateTilt,
   HoleResult,
   MatchState,
+  TiltHoleScore,
+  TiltPlayerResult,
 } from '@/lib/golf'
 
 interface HoleData {
@@ -56,6 +59,7 @@ interface MatchData {
     format: string
     maxScore: number | null
     verificationStatus: string
+    tiltEnabled?: boolean
     tee: {
       course: { id: string; name: string }
       holes: HoleData[]
@@ -66,6 +70,7 @@ interface MatchData {
       pointsForWin: number
       pointsForHalf: number
       defaultMaxScore: number | null
+      defaultTiltEntryFee?: number
     }
   }
   players: MatchPlayerData[]
@@ -299,6 +304,40 @@ export default function ScoreEntryPage() {
   const currentHoleData = holes.find(h => h.number === currentHole)
   const effectiveMaxScore = match ? (match.round.maxScore ?? match.round.trip.defaultMaxScore) : null
 
+  // Compute TILT state from local scores (optimistic, same as match state)
+  const tiltEnabled = match?.round.tiltEnabled ?? false
+  const tiltResults = (() => {
+    if (!match || !tiltEnabled) return null
+
+    const tiltHoleScores: TiltHoleScore[] = holes.map(hole => {
+      const playerScores: { playerId: string; netScore: number; par: number }[] = []
+      for (const player of match.players) {
+        const gross = localScores[player.id]?.[hole.id]
+        if (gross === undefined) continue
+        const capped = applyMaxScore(gross, hole.par, effectiveMaxScore)
+        const hasStroke = receivesStroke(player.playingHandicap, hole.handicap)
+        const net = netScore(capped, hasStroke ? 1 : 0)
+        playerScores.push({
+          playerId: player.tripPlayer.id,
+          netScore: net,
+          par: hole.par,
+        })
+      }
+      return { holeNumber: hole.number, playerScores }
+    })
+
+    const entryFee = match.round.trip.defaultTiltEntryFee ?? 20
+    return calculateTilt(tiltHoleScores, entryFee, match.players.length)
+  })()
+
+  // Map tripPlayerId → TILT result for quick lookup
+  const tiltByPlayer = new Map<string, TiltPlayerResult>()
+  if (tiltResults) {
+    for (const p of tiltResults.players) {
+      tiltByPlayer.set(p.playerId, p)
+    }
+  }
+
   // Scored holes set for nav strip
   const scoredHoles = new Set<number>()
   if (match) {
@@ -430,19 +469,39 @@ export default function ScoreEntryPage() {
             .map(player => {
               const hasStroke = receivesStroke(player.playingHandicap, currentHoleData.handicap)
               const currentScore = localScores[player.id]?.[currentHoleData.id] ?? null
+              const tiltPlayer = tiltByPlayer.get(player.tripPlayer.id)
 
               return (
-                <ScoreInput
-                  key={player.id}
-                  playerName={player.tripPlayer.user.name}
-                  teamColor={player.tripPlayer.team?.color ?? null}
-                  teamName={player.tripPlayer.team?.name ?? null}
-                  par={currentHoleData.par}
-                  strokeReceived={hasStroke}
-                  currentScore={currentScore}
-                  maxScore={effectiveMaxScore}
-                  onScore={(score) => handleScore(player.id, currentHoleData.id, score)}
-                />
+                <div key={player.id}>
+                  <ScoreInput
+                    playerName={player.tripPlayer.user.name}
+                    teamColor={player.tripPlayer.team?.color ?? null}
+                    teamName={player.tripPlayer.team?.name ?? null}
+                    par={currentHoleData.par}
+                    strokeReceived={hasStroke}
+                    currentScore={currentScore}
+                    maxScore={effectiveMaxScore}
+                    onScore={(score) => handleScore(player.id, currentHoleData.id, score)}
+                  />
+                  {tiltEnabled && tiltPlayer && (
+                    <div className="flex items-center gap-2 px-4 pb-1 -mt-0.5">
+                      <span className="text-[10px] text-amber-400/70" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+                        TILT
+                      </span>
+                      {tiltPlayer.finalMultiplier > 1 && (
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-amber-900/30 text-amber-400" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+                          {tiltPlayer.finalMultiplier}x
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] font-medium ${tiltPlayer.totalPoints >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}
+                        style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+                      >
+                        {tiltPlayer.totalPoints > 0 ? '+' : ''}{tiltPlayer.totalPoints} pts
+                      </span>
+                    </div>
+                  )}
+                </div>
               )
             })}
         </div>

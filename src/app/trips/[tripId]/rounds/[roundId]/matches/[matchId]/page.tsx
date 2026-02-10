@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Scorecard from '@/components/scoring/Scorecard'
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeSubscription'
 import {
   bestBall,
   holeWinner,
@@ -22,21 +23,29 @@ export default function MatchScorecardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/trips/${tripId}/rounds/${roundId}/matches/${matchId}`)
-        if (!res.ok) throw new Error('Failed to load match')
-        const json = await res.json()
-        setMatch(json.data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      } finally {
-        setLoading(false)
-      }
+  const fetchMatch = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/trips/${tripId}/rounds/${roundId}/matches/${matchId}`)
+      if (!res.ok) throw new Error('Failed to load match')
+      const json = await res.json()
+      setMatch(json.data)
+    } catch (err) {
+      if (loading) setError(err instanceof Error ? err.message : 'Failed to load')
+    } finally {
+      setLoading(false)
     }
-    load()
-  }, [tripId, roundId, matchId])
+  }, [tripId, roundId, matchId, loading])
+
+  useEffect(() => {
+    fetchMatch()
+  }, [fetchMatch])
+
+  // Realtime: refresh when scores change (only while match is in-progress)
+  useRealtimeSubscription({
+    table: 'Score',
+    onUpdate: fetchMatch,
+    enabled: match?.status !== 'COMPLETE',
+  })
 
   if (loading) {
     return (
@@ -137,6 +146,12 @@ export default function MatchScorecardPage() {
           <Link href={`/trips/${tripId}/rounds/${roundId}`} className="hover:text-slate-300">Round</Link>
           <span>/</span>
           <span className="text-slate-400">Match {match.matchNumber}</span>
+          {match.status !== 'COMPLETE' && (
+            <span className="ml-2 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400 text-[10px] uppercase tracking-wider">Live</span>
+            </span>
+          )}
         </div>
 
         {/* Scorecard */}
