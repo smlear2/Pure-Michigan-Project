@@ -16,6 +16,11 @@ export async function PUT(
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Forbidden', 'FORBIDDEN', 403)
 
+    const existing = await prisma.round.findFirst({
+      where: { id: params.roundId, tripId: params.tripId },
+    })
+    if (!existing) return errorResponse('Round not found', 'NOT_FOUND', 404)
+
     const body = await request.json()
     const validated = updateRoundSchema.parse(body)
 
@@ -73,6 +78,11 @@ export async function DELETE(
 
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Forbidden', 'FORBIDDEN', 403)
+
+    const existing = await prisma.round.findFirst({
+      where: { id: params.roundId, tripId: params.tripId },
+    })
+    if (!existing) return errorResponse('Round not found', 'NOT_FOUND', 404)
 
     await prisma.round.delete({
       where: { id: params.roundId },

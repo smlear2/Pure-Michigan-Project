@@ -38,6 +38,16 @@ export async function getCurrentUser(request: NextRequest) {
 }
 
 /**
+ * Check if the given user is a member of the given trip.
+ * Returns the TripPlayer record or null.
+ */
+export async function requireTripMember(tripId: string, userId: string) {
+  return prisma.tripPlayer.findFirst({
+    where: { tripId, userId },
+  })
+}
+
+/**
  * Check if the given user is an ORGANIZER of the given trip.
  */
 export async function requireOrganizer(tripId: string, userId: string): Promise<boolean> {

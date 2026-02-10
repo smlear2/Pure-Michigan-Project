@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 import { createCourseSchema } from '@/lib/validators/course'
-import { successResponse, handleApiError } from '@/lib/api-response'
+import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 
 const courseInclude = {
   tees: {
@@ -15,8 +16,11 @@ const courseInclude = {
 }
 
 // GET /api/courses
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await getCurrentUser(request)
+    if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
     const courses = await prisma.course.findMany({
       include: courseInclude,
       orderBy: { name: 'asc' },
@@ -30,6 +34,9 @@ export async function GET() {
 // POST /api/courses
 export async function POST(request: NextRequest) {
   try {
+    const auth = await getCurrentUser(request)
+    if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
     const body = await request.json()
     const validated = createCourseSchema.parse(body)
 

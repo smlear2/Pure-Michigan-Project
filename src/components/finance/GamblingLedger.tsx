@@ -58,87 +58,75 @@ export default function GamblingLedger({ players }: GamblingLedgerProps) {
       </div>
 
       {/* Header */}
-      <div className={`grid ${hasTilt ? 'grid-cols-14' : 'grid-cols-12'} gap-1 px-4 py-2 border-b border-slate-800/50 text-xs text-slate-500`} style={monoFont}>
+      <div className="grid grid-cols-12 gap-1 px-4 py-2 border-b border-slate-800/50 text-xs text-slate-500" style={monoFont}>
         <div className={hasTilt ? 'col-span-3' : 'col-span-4'}>Player</div>
         <div className="col-span-2 text-right">Skins</div>
         <div className="col-span-2 text-right">Won</div>
-        <div className="col-span-2 text-right">Entry</div>
-        <div className="col-span-2 text-right">Skins Net</div>
+        <div className={hasTilt ? 'col-span-1 text-right' : 'col-span-2 text-right'}>Entry</div>
+        <div className="col-span-2 text-right">{hasTilt ? 'Skins' : 'Net'}</div>
         {hasTilt && (
-          <div className="col-span-2 text-right">TILT Net</div>
+          <div className="col-span-2 text-right">TILT</div>
         )}
       </div>
 
       {/* Rows */}
-      {players.map(player => {
-        const totalNet = player.skinsNet + (player.tiltNet ?? 0)
-        return (
-          <div key={player.tripPlayerId}>
-            <div className={`grid ${hasTilt ? 'grid-cols-14' : 'grid-cols-12'} gap-1 px-4 py-2 border-b border-slate-800/30 items-center text-sm`}>
-              <div className={`${hasTilt ? 'col-span-3' : 'col-span-4'} flex items-center gap-2`}>
-                {player.teamColor && (
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: player.teamColor }} />
-                )}
-                <span className="text-slate-300 truncate">{player.name}</span>
-              </div>
-              <div className="col-span-2 text-right text-slate-400" style={monoFont}>
-                {player.totalSkinsWon}
-              </div>
-              <div className="col-span-2 text-right text-emerald-400" style={monoFont}>
-                {formatCurrency(player.totalMoneyWon)}
-              </div>
-              <div className="col-span-2 text-right text-slate-400" style={monoFont}>
-                {formatCurrency(player.totalEntryFees)}
-              </div>
-              <div className="col-span-2 text-right">
-                <BalanceBadge amount={player.skinsNet} size="sm" />
-              </div>
-              {hasTilt && (
-                <div className="col-span-2 text-right">
-                  <BalanceBadge amount={player.tiltNet ?? 0} size="sm" />
-                </div>
+      {players.map(player => (
+        <div key={player.tripPlayerId}>
+          <div className="grid grid-cols-12 gap-1 px-4 py-2 border-b border-slate-800/30 items-center text-sm">
+            <div className={`${hasTilt ? 'col-span-3' : 'col-span-4'} flex items-center gap-2`}>
+              {player.teamColor && (
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: player.teamColor }} />
               )}
+              <span className="text-slate-300 truncate">{player.name}</span>
             </div>
-
-            {/* Per-round skins breakdown */}
-            {player.roundBreakdown.length > 1 && player.roundBreakdown.map((round, i) => (
-              <div key={`skins-${i}`} className={`grid ${hasTilt ? 'grid-cols-14' : 'grid-cols-12'} gap-1 px-4 py-1 border-b border-slate-800/20 items-center text-xs text-slate-600`}>
-                <div className={hasTilt ? 'col-span-3 pl-5' : 'col-span-4 pl-5'}>{round.roundName}</div>
-                <div className="col-span-2 text-right" style={monoFont}>{round.skinsWon}</div>
-                <div className="col-span-2 text-right" style={monoFont}>{formatCurrency(round.moneyWon)}</div>
-                <div className="col-span-2 text-right" style={monoFont}>{formatCurrency(round.entryFee)}</div>
-                <div className="col-span-2 text-right" style={monoFont}>{formatCurrency(round.moneyWon - round.entryFee)}</div>
-                {hasTilt && <div className="col-span-2" />}
+            <div className="col-span-2 text-right text-slate-400" style={monoFont}>
+              {player.totalSkinsWon}
+            </div>
+            <div className="col-span-2 text-right text-emerald-400" style={monoFont}>
+              {formatCurrency(player.totalMoneyWon)}
+            </div>
+            <div className={`${hasTilt ? 'col-span-1' : 'col-span-2'} text-right text-slate-400`} style={monoFont}>
+              {formatCurrency(player.totalEntryFees)}
+            </div>
+            <div className="col-span-2 text-right">
+              <BalanceBadge amount={player.skinsNet} size="sm" />
+            </div>
+            {hasTilt && (
+              <div className="col-span-2 text-right">
+                <BalanceBadge amount={player.tiltNet ?? 0} size="sm" />
               </div>
-            ))}
+            )}
+          </div>
 
-            {/* Per-round TILT breakdown */}
-            {hasTilt && (player.tiltRounds?.length ?? 0) > 1 && player.tiltRounds?.map((round, i) => (
-              <div key={`tilt-${i}`} className={`grid grid-cols-14 gap-1 px-4 py-1 border-b border-slate-800/20 items-center text-xs text-slate-600`}>
-                <div className="col-span-3 pl-5">
-                  <span className="text-amber-900">TILT</span> {round.roundName}
-                </div>
-                <div className="col-span-2 text-right" style={monoFont}>{round.totalPoints} pts</div>
-                <div className="col-span-2" />
-                <div className="col-span-2 text-right" style={monoFont}>{formatCurrency(round.entryFee)}</div>
-                <div className="col-span-2" />
-                <div className="col-span-2 text-right" style={monoFont}>
-                  {round.isWinner ? 'Winner' : formatCurrency(-round.entryFee)}
-                </div>
+          {/* Per-round skins breakdown */}
+          {player.roundBreakdown.length > 1 && player.roundBreakdown.map((round, i) => (
+            <div key={`skins-${i}`} className="grid grid-cols-12 gap-1 px-4 py-1 border-b border-slate-800/20 items-center text-xs text-slate-600">
+              <div className={hasTilt ? 'col-span-3 pl-5' : 'col-span-4 pl-5'}>{round.roundName}</div>
+              <div className="col-span-2 text-right" style={monoFont}>{round.skinsWon}</div>
+              <div className="col-span-2 text-right" style={monoFont}>{formatCurrency(round.moneyWon)}</div>
+              <div className={`${hasTilt ? 'col-span-1' : 'col-span-2'} text-right`} style={monoFont}>{formatCurrency(round.entryFee)}</div>
+              <div className="col-span-2 text-right" style={monoFont}>{formatCurrency(round.moneyWon - round.entryFee)}</div>
+              {hasTilt && <div className="col-span-2" />}
+            </div>
+          ))}
+
+          {/* Per-round TILT breakdown */}
+          {hasTilt && (player.tiltRounds?.length ?? 0) > 1 && player.tiltRounds?.map((round, i) => (
+            <div key={`tilt-${i}`} className="grid grid-cols-12 gap-1 px-4 py-1 border-b border-slate-800/20 items-center text-xs text-slate-600">
+              <div className="col-span-3 pl-5">
+                <span className="text-amber-900">TILT</span> {round.roundName}
               </div>
-            ))}
-          </div>
-        )
-      })}
-
-      {/* Total row */}
-      {hasTilt && (
-        <div className="px-4 py-2 border-t border-slate-700/50">
-          <div className="flex items-center justify-between text-xs text-slate-500" style={monoFont}>
-            <span>Combined gambling net = Skins Net + TILT Net</span>
-          </div>
+              <div className="col-span-2 text-right" style={monoFont}>{round.totalPoints} pts</div>
+              <div className="col-span-2" />
+              <div className="col-span-1 text-right" style={monoFont}>{formatCurrency(round.entryFee)}</div>
+              <div className="col-span-2" />
+              <div className="col-span-2 text-right">
+                <BalanceBadge amount={round.isWinner ? (round.entryFee * -1 + round.entryFee) : -round.entryFee} size="sm" />
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      ))}
     </div>
   )
 }

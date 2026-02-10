@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, requireTripMember } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 import { calculateSkins, HoleSkinScore, calculateTilt, TiltHoleScore } from '@/lib/golf'
 
@@ -12,6 +12,9 @@ export async function GET(
   try {
     const auth = await getCurrentUser(request)
     if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
+    const member = await requireTripMember(params.tripId, auth.dbUser.id)
+    if (!member) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
     // Load trip players
     const tripPlayers = await prisma.tripPlayer.findMany({
@@ -146,7 +149,8 @@ export async function GET(
       where: { tripId: params.tripId, type: 'TILT', isActive: true },
     })
 
-    const playerTiltMap = new Map<string, { roundName: string; totalPoints: number; entryFee: number; isWinner: boolean }[]>()
+    // Per-round TILT results: compute once, store winnings per player
+    const playerTiltMap = new Map<string, { roundName: string; totalPoints: number; entryFee: number; tiltWinnings: number }[]>()
     for (const tp of tripPlayers) {
       playerTiltMap.set(tp.id, [])
     }
@@ -184,9 +188,13 @@ export async function GET(
 
       const tiltEntryFee = tiltWagerConfig?.entryFee ?? round.trip.defaultTiltEntryFee
       const tiltResult = calculateTilt(tiltHoleScores, tiltEntryFee, uniqueTiltPlayers.size)
+      const pot = tiltEntryFee * uniqueTiltPlayers.size
 
-      // Winner takes all
-      const winnerId = tiltResult.players.length > 0 ? tiltResult.players[0].playerId : null
+      // Handle ties: find all players sharing the top score, split pot among them
+      const topScore = tiltResult.players.length > 0 ? tiltResult.players[0].totalPoints : 0
+      const winners = tiltResult.players.filter(p => p.totalPoints === topScore)
+      const winnerIds = new Set(winners.map(w => w.playerId))
+      const winningsPerWinner = pot / winners.length
 
       for (const tpId of Array.from(uniqueTiltPlayers)) {
         const tiltPlayer = tiltResult.players.find(p => p.playerId === tpId)
@@ -196,7 +204,7 @@ export async function GET(
             roundName: round.name || `Round ${round.roundNumber}`,
             totalPoints: tiltPlayer?.totalPoints ?? 0,
             entryFee: tiltEntryFee,
-            isWinner: tpId === winnerId,
+            tiltWinnings: winnerIds.has(tpId) ? winningsPerWinner : 0,
           })
         }
       }
@@ -210,29 +218,9 @@ export async function GET(
       const totalSkins = rounds.reduce((s, r) => s + r.skinsWon, 0)
 
       const tiltRoundsData = playerTiltMap.get(tp.id) || []
-      const tiltTotalEntry = tiltRoundsData.reduce((s, r) => s + r.entryFee, 0)
-      const tiltWinnings = tiltRoundsData.reduce((s, r) => {
-        if (r.isWinner) {
-          // Winner takes pot for that round: entryFee * number of players in that round
-          // We need player count — stored indirectly. For simplicity, find from tiltRounds
-          return s + r.entryFee // placeholder, actual pot computed below
-        }
-        return s
-      }, 0)
-
-      // Compute TILT net: for each round, winner gets pot - entry, losers get -entry
       let tiltNet = 0
       for (const r of tiltRoundsData) {
-        if (r.isWinner) {
-          // Find the round to get player count
-          const matchingRound = tiltRounds.find(tr => (tr.name || `Round ${tr.roundNumber}`) === r.roundName)
-          const roundTiltScores = matchingRound ? (tiltScoresByRound.get(matchingRound.id) || []) : []
-          const roundPlayerCount = new Set(roundTiltScores.map(s => s.matchPlayer.tripPlayerId)).size
-          const pot = r.entryFee * roundPlayerCount
-          tiltNet += pot - r.entryFee
-        } else {
-          tiltNet -= r.entryFee
-        }
+        tiltNet += r.tiltWinnings - r.entryFee
       }
 
       return {

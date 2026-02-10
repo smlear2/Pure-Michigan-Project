@@ -30,11 +30,11 @@ export default function MatchScorecardPage() {
       const json = await res.json()
       setMatch(json.data)
     } catch (err) {
-      if (loading) setError(err instanceof Error ? err.message : 'Failed to load')
+      setError(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
-  }, [tripId, roundId, matchId, loading])
+  }, [tripId, roundId, matchId])
 
   useEffect(() => {
     fetchMatch()

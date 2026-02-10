@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, requireTripMember } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 import { simplifyDebts } from '@/lib/finance'
 import { calculateSkins, HoleSkinScore, calculateTilt, TiltHoleScore } from '@/lib/golf'
@@ -13,6 +13,9 @@ export async function GET(
   try {
     const auth = await getCurrentUser(request)
     if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
+    const member = await requireTripMember(params.tripId, auth.dbUser.id)
+    if (!member) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
     const tripPlayers = await prisma.tripPlayer.findMany({
       where: { tripId: params.tripId, isActive: true },
@@ -205,18 +208,18 @@ export async function GET(
 
       const tiltEntryFee = tiltWagerConfig?.entryFee ?? round.trip.defaultTiltEntryFee
       const tiltResult = calculateTilt(tiltHoleScores, tiltEntryFee, uniqueTiltPlayers.size)
-
-      // Winner takes all — top player gets pot
-      const winnerId = tiltResult.players.length > 0 ? tiltResult.players[0].playerId : null
       const pot = tiltEntryFee * uniqueTiltPlayers.size
+
+      // Handle ties: split pot among all players sharing the top score
+      const topScore = tiltResult.players.length > 0 ? tiltResult.players[0].totalPoints : 0
+      const winners = tiltResult.players.filter(p => p.totalPoints === topScore)
+      const winnerIds = new Set(winners.map(w => w.playerId))
+      const winningsPerWinner = pot / winners.length
 
       for (const tpId of Array.from(uniqueTiltPlayers)) {
         const bal = gamblingBalances.get(tpId) ?? 0
-        if (tpId === winnerId) {
-          gamblingBalances.set(tpId, bal + pot - tiltEntryFee)
-        } else {
-          gamblingBalances.set(tpId, bal - tiltEntryFee)
-        }
+        const winnings = winnerIds.has(tpId) ? winningsPerWinner : 0
+        gamblingBalances.set(tpId, bal + winnings - tiltEntryFee)
       }
     }
 

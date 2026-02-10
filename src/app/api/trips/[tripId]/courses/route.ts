@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser, requireOrganizer } from '@/lib/auth'
+import { getCurrentUser, requireOrganizer, requireTripMember } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 
 // GET /api/trips/[tripId]/courses — courses linked to this trip
@@ -11,6 +11,9 @@ export async function GET(
   try {
     const auth = await getCurrentUser(request)
     if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
+    const member = await requireTripMember(params.tripId, auth.dbUser.id)
+    if (!member) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
     const tripCourses = await prisma.tripCourse.findMany({
       where: { tripId: params.tripId },

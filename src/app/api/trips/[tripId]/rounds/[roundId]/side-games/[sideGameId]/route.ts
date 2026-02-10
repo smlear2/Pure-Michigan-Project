@@ -22,6 +22,11 @@ export async function PUT(
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Only organizers can update side games', 'FORBIDDEN', 403)
 
+    const existing = await prisma.sideGame.findFirst({
+      where: { id: params.sideGameId, roundId: params.roundId, round: { tripId: params.tripId } },
+    })
+    if (!existing) return errorResponse('Side game not found', 'NOT_FOUND', 404)
+
     const body = await request.json()
     const validated = updateSideGameSchema.parse(body)
 
@@ -61,6 +66,11 @@ export async function DELETE(
 
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Only organizers can delete side games', 'FORBIDDEN', 403)
+
+    const existing = await prisma.sideGame.findFirst({
+      where: { id: params.sideGameId, roundId: params.roundId, round: { tripId: params.tripId } },
+    })
+    if (!existing) return errorResponse('Side game not found', 'NOT_FOUND', 404)
 
     await prisma.sideGame.delete({ where: { id: params.sideGameId } })
 

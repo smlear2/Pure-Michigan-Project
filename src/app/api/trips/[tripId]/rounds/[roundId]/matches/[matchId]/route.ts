@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser, requireOrganizer } from '@/lib/auth'
+import { getCurrentUser, requireOrganizer, requireTripMember } from '@/lib/auth'
 import { updateMatchSchema } from '@/lib/validators/match'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 
@@ -12,6 +12,9 @@ export async function GET(
   try {
     const auth = await getCurrentUser(request)
     if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
+    const member = await requireTripMember(params.tripId, auth.dbUser.id)
+    if (!member) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
     const match = await prisma.match.findFirst({
       where: {
@@ -77,6 +80,11 @@ export async function PUT(
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Only the organizer can update matches', 'FORBIDDEN', 403)
 
+    const existing = await prisma.match.findFirst({
+      where: { id: params.matchId, roundId: params.roundId, round: { tripId: params.tripId } },
+    })
+    if (!existing) return errorResponse('Match not found', 'NOT_FOUND', 404)
+
     const body = await request.json()
     const validated = updateMatchSchema.parse(body)
 
@@ -114,6 +122,11 @@ export async function DELETE(
 
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Only the organizer can delete matches', 'FORBIDDEN', 403)
+
+    const existing = await prisma.match.findFirst({
+      where: { id: params.matchId, roundId: params.roundId, round: { tripId: params.tripId } },
+    })
+    if (!existing) return errorResponse('Match not found', 'NOT_FOUND', 404)
 
     await prisma.match.delete({
       where: { id: params.matchId },

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getCurrentUser } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
 const TEE_COLOR_MAP: Record<string, string> = {
@@ -90,6 +91,9 @@ function transformCourse(ext: ExternalCourse) {
 
 // GET /api/courses/search?q=...
 export async function GET(request: NextRequest) {
+  const auth = await getCurrentUser(request)
+  if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
   const query = request.nextUrl.searchParams.get('q')
   if (!query || query.trim().length < 2) {
     return errorResponse('Search query must be at least 2 characters', 'INVALID_QUERY', 400)

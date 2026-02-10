@@ -46,6 +46,10 @@ export function handleApiError(error: unknown) {
     }
   }
 
+  if (error instanceof SyntaxError) {
+    return errorResponse('Invalid JSON in request body', 'INVALID_JSON', 400)
+  }
+
   console.error('Unhandled API error:', error)
   return errorResponse(
     'Internal server error',

@@ -1,7 +1,13 @@
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
+
+const attestSchema = z.object({
+  side: z.union([z.literal(1), z.literal(2)]),
+  attested: z.boolean(),
+})
 
 // POST /api/trips/[tripId]/rounds/[roundId]/matches/[matchId]/attest
 // Body: { side: 1 | 2, attested: boolean }
@@ -20,16 +26,20 @@ export async function POST(
     if (!tripPlayer) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
     const body = await request.json()
-    const side = body.side as number
-    const attested = body.attested as boolean
+    const validated = attestSchema.parse(body)
 
-    if (side !== 1 && side !== 2) {
-      return errorResponse('Side must be 1 or 2', 'VALIDATION_ERROR', 400)
-    }
+    const matchPlayer = await prisma.matchPlayer.findFirst({
+      where: {
+        matchId: params.matchId,
+        tripPlayerId: tripPlayer.id,
+        side: validated.side,
+      },
+    })
+    if (!matchPlayer) return errorResponse('You can only attest your own side', 'FORBIDDEN', 403)
 
-    const updateData = side === 1
-      ? { side1Attested: attested }
-      : { side2Attested: attested }
+    const updateData = validated.side === 1
+      ? { side1Attested: validated.attested }
+      : { side2Attested: validated.attested }
 
     const match = await prisma.match.update({
       where: { id: params.matchId },

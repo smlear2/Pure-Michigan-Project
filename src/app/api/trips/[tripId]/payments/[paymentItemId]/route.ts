@@ -16,6 +16,11 @@ export async function PUT(
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Only the organizer can manage payments', 'FORBIDDEN', 403)
 
+    const existing = await prisma.paymentItem.findFirst({
+      where: { id: params.paymentItemId, tripId: params.tripId },
+    })
+    if (!existing) return errorResponse('Payment item not found', 'NOT_FOUND', 404)
+
     const body = await request.json()
     const validated = updatePaymentItemSchema.parse(body)
 
@@ -48,6 +53,11 @@ export async function DELETE(
 
     const isOrganizer = await requireOrganizer(params.tripId, auth.dbUser.id)
     if (!isOrganizer) return errorResponse('Only the organizer can manage payments', 'FORBIDDEN', 403)
+
+    const existing = await prisma.paymentItem.findFirst({
+      where: { id: params.paymentItemId, tripId: params.tripId },
+    })
+    if (!existing) return errorResponse('Payment item not found', 'NOT_FOUND', 404)
 
     await prisma.paymentItem.delete({ where: { id: params.paymentItemId } })
 

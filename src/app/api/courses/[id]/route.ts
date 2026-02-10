@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 import { updateCourseSchema } from '@/lib/validators/course'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 
@@ -20,6 +21,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await getCurrentUser(request)
+    if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
     const course = await prisma.course.findUnique({
       where: { id: params.id },
       include: courseInclude,
@@ -41,6 +45,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await getCurrentUser(request)
+    if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
     const body = await request.json()
     const validated = updateCourseSchema.parse(body)
 
@@ -167,6 +174,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await getCurrentUser(request)
+    if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
     const tripCourseCount = await prisma.tripCourse.count({
       where: { courseId: params.id },
     })

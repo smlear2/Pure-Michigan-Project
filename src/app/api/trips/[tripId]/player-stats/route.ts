@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, requireTripMember } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 import { calculateSkins, HoleSkinScore } from '@/lib/golf'
 
@@ -13,6 +13,9 @@ export async function GET(
   try {
     const auth = await getCurrentUser(request)
     if (!auth) return errorResponse('Unauthorized', 'UNAUTHORIZED', 401)
+
+    const member = await requireTripMember(params.tripId, auth.dbUser.id)
+    if (!member) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
     // Load trip players with user/team info
     const tripPlayers = await prisma.tripPlayer.findMany({
