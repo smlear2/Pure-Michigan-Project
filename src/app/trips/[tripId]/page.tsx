@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import TeamLeaderboard from '@/components/scoring/TeamLeaderboard'
+import PlayerLeaderboard from '@/components/scoring/PlayerLeaderboard'
 
 export default function TripDashboardPage() {
   const params = useParams()
   const { tripId } = params as { tripId: string }
 
   const [standings, setStandings] = useState<any>(null)
+  const [playerStats, setPlayerStats] = useState<any>(null)
   const [rounds, setRounds] = useState<any[]>([])
   const [trip, setTrip] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -17,8 +19,9 @@ export default function TripDashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [standingsRes, roundsRes, tripRes] = await Promise.all([
+        const [standingsRes, playerStatsRes, roundsRes, tripRes] = await Promise.all([
           fetch(`/api/trips/${tripId}/standings`),
+          fetch(`/api/trips/${tripId}/player-stats`),
           fetch(`/api/trips/${tripId}/rounds`),
           fetch(`/api/trips/${tripId}`),
         ])
@@ -26,6 +29,11 @@ export default function TripDashboardPage() {
         if (standingsRes.ok) {
           const json = await standingsRes.json()
           setStandings(json.data)
+        }
+
+        if (playerStatsRes.ok) {
+          const json = await playerStatsRes.json()
+          setPlayerStats(json.data)
         }
 
         if (roundsRes.ok) {
@@ -81,6 +89,13 @@ export default function TripDashboardPage() {
               pointsToWin={standings.pointsToWin}
               totalMatchesPlayed={standings.totalMatchesPlayed}
             />
+          </div>
+        )}
+
+        {/* Player Leaderboard */}
+        {playerStats && playerStats.players && (
+          <div className="mb-6">
+            <PlayerLeaderboard players={playerStats.players} />
           </div>
         )}
 

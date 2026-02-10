@@ -19,6 +19,7 @@ export async function GET(
         tee: {
           include: {
             course: { select: { id: true, name: true, location: true } },
+            holes: { orderBy: { number: 'asc' } },
           },
         },
       },

@@ -233,24 +233,72 @@
 
 /* Print styles */
 @media print {
+  @page {
+    size: landscape;
+    margin: 0.4in;
+  }
+
   .no-print {
     display: none !important;
   }
 
-  .print-break {
-    page-break-after: always;
-  }
-
   body {
+    background: white !important;
+    color: black !important;
     font-size: 12px;
   }
 
-  .scorecard-grid {
-    border: 1px solid #000;
+  .print-scorecard {
+    page-break-after: always;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
   }
 
-  .scorecard-cell {
-    border: 1px solid #ccc;
-    padding: 4px;
+  .print-scorecard:last-child {
+    page-break-after: avoid;
+  }
+
+  .print-scorecard table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .print-scorecard th,
+  .print-scorecard td {
+    border: 1px solid #333;
+    padding: 2px 4px;
+    text-align: center;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .print-scorecard .score-cell {
+    height: 26px;
+    min-width: 30px;
+  }
+
+  .print-scorecard .label-cell {
+    text-align: left;
+    font-size: 9px;
+    width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .print-scorecard .header-row th {
+    background: #222 !important;
+    color: white !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-scorecard .par-row td {
+    font-weight: bold;
+  }
+
+  .print-scorecard .separator-row td {
+    border-top: 2px solid #000;
   }
 }
