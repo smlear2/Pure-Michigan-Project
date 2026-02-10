@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 45 93% 47%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 160 84% 39%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 0 0% 100%;
+
+    --card: 222 47% 13%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 222 47% 13%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 215 25% 20%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 25%;
+    --input: 215 25% 25%;
+    --ring: 160 84% 39%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Date input theming */
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  /* Style date input calendar icon */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+
+  /* Ensure date input text matches theme */
+  input[type="date"] {
+    @apply text-foreground;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Theme-aware utility classes */
+@layer components {
+  .theme-bg-primary {
+    @apply bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950;
+  }
+
+  .dark .theme-bg-primary {
+    @apply bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950;
+  }
+
+  :root .theme-bg-primary,
+  .light .theme-bg-primary {
+    @apply bg-gradient-to-br from-slate-50 via-white to-emerald-50;
+  }
+
+  .theme-card {
+    @apply bg-slate-900/40 backdrop-blur-sm border border-slate-800/50;
+  }
+
+  :root:not(.dark) .theme-card,
+  .light .theme-card {
+    @apply bg-white/80 backdrop-blur-sm border border-slate-200;
+  }
+
+  .theme-text-primary {
+    @apply text-white;
+  }
+
+  :root:not(.dark) .theme-text-primary,
+  .light .theme-text-primary {
+    @apply text-slate-900;
+  }
+
+  .theme-text-secondary {
+    @apply text-gray-400;
+  }
+
+  :root:not(.dark) .theme-text-secondary,
+  .light .theme-text-secondary {
+    @apply text-slate-600;
+  }
+
+  .theme-text-muted {
+    @apply text-gray-500;
+  }
+
+  :root:not(.dark) .theme-text-muted,
+  .light .theme-text-muted {
+    @apply text-slate-500;
+  }
+}
+
+/* Scorecard and game-specific styles */
+@layer components {
+  .team-us {
+    @apply bg-[#002868] text-white;
+  }
+  .team-us-light {
+    @apply bg-[#002868]/10 text-[#002868] border-[#002868];
+  }
+
+  .team-europe {
+    @apply bg-[#003399] text-white;
+  }
+  .team-europe-light {
+    @apply bg-[#003399]/10 text-[#003399] border-[#003399];
+  }
+
+  .score-eagle {
+    @apply bg-yellow-500 text-white font-bold;
+  }
+  .score-birdie {
+    @apply bg-green-500 text-white;
+  }
+  .score-par {
+    @apply bg-gray-500 text-white;
+  }
+  .score-bogey {
+    @apply bg-red-400 text-white;
+  }
+  .score-double {
+    @apply bg-red-600 text-white;
+  }
+
+  .scorecard-grid {
+    @apply grid gap-px bg-border;
+  }
+  .scorecard-cell {
+    @apply bg-background p-2 text-center text-sm;
+  }
+  .scorecard-header {
+    @apply bg-muted font-semibold;
+  }
+
+  .stroke-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-current ml-0.5;
+  }
+
+  .match-status {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .match-status-us {
+    @apply bg-[#002868] text-white;
+  }
+  .match-status-europe {
+    @apply bg-[#003399] text-white;
+  }
+  .match-status-tied {
+    @apply bg-gray-500 text-white;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break {
+    page-break-after: always;
+  }
+
+  body {
+    font-size: 12px;
+  }
+
+  .scorecard-grid {
+    border: 1px solid #000;
+  }
+
+  .scorecard-cell {
+    border: 1px solid #ccc;
+    padding: 4px;
+  }
+}
