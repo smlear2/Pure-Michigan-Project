@@ -87,6 +87,8 @@ export default function ScoreEntryPage() {
   const [localScores, setLocalScores] = useState<Record<string, Record<string, number>>>({})
 
   const autoAdvanceTimer = useRef<NodeJS.Timeout | null>(null)
+  const savedHoles = useRef<Set<string>>(new Set())
+  const savingRef = useRef(false)
 
   // Load match data
   useEffect(() => {
@@ -190,19 +192,22 @@ export default function ScoreEntryPage() {
     )
   }, [match, localScores])
 
-  // Save scores for current hole to server
-  const saveHoleScores = useCallback(async (holeId: string) => {
-    if (!match || saving) return
+  // Save scores for current hole to server (fire-and-forget, ref-guarded)
+  const saveHoleScores = useCallback(async (holeId: string, scores: Record<string, Record<string, number>>) => {
+    if (!match || savingRef.current) return
+    if (savedHoles.current.has(holeId)) return // Already saved this hole
 
     const scoresToSave = match.players
-      .filter(p => localScores[p.id]?.[holeId] !== undefined)
+      .filter(p => scores[p.id]?.[holeId] !== undefined)
       .map(p => ({
         matchPlayerId: p.id,
-        grossScore: localScores[p.id][holeId],
+        grossScore: scores[p.id][holeId],
       }))
 
     if (scoresToSave.length === 0) return
 
+    savedHoles.current.add(holeId)
+    savingRef.current = true
     setSaving(true)
     try {
       await fetch(`/api/trips/${tripId}/rounds/${roundId}/matches/${matchId}/scores`, {
@@ -212,13 +217,17 @@ export default function ScoreEntryPage() {
       })
     } catch (err) {
       console.error('Failed to save scores:', err)
+      savedHoles.current.delete(holeId) // Allow retry on failure
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
-  }, [match, localScores, saving, tripId, roundId, matchId])
+  }, [match, tripId, roundId, matchId])
 
   // Handle score entry for a player
   const handleScore = useCallback((matchPlayerId: string, holeId: string, score: number) => {
+    // Clear saved flag so edits re-trigger a save
+    savedHoles.current.delete(holeId)
     setLocalScores(prev => ({
       ...prev,
       [matchPlayerId]: {
@@ -232,15 +241,15 @@ export default function ScoreEntryPage() {
   useEffect(() => {
     if (!match) return
 
-    const holes = match.round.tee.holes.sort((a, b) => a.number - b.number)
-    const currentHoleData = holes.find(h => h.number === currentHole)
+    const holes = match.round.tee.holes.sort((a: any, b: any) => a.number - b.number)
+    const currentHoleData = holes.find((h: any) => h.number === currentHole)
     if (!currentHoleData) return
 
     const allScored = match.players.every(p => localScores[p.id]?.[currentHoleData.id] !== undefined)
 
     if (allScored) {
-      // Save to server
-      saveHoleScores(currentHoleData.id)
+      // Save to server (ref-guarded, won't fire twice for same hole)
+      saveHoleScores(currentHoleData.id, localScores)
 
       // Flash confirmation and auto-advance after delay
       if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current)
