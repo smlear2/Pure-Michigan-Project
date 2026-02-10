@@ -38,26 +38,27 @@ Convert localStorage-based setup wizard to database-backed API routes.
 
 ---
 
-## Sprint 3: Scoring Engine ⬜ NOT STARTED
+## Sprint 3: Scoring Engine ✅ COMPLETE
 
-- [ ] Scorecard component (format-agnostic, data-driven)
-- [ ] Live scoring page (mobile-first entry)
-- [ ] Max stroke cap: scoring engine caps gross at par + maxScore
-- [ ] Handicap stroke allocation per format
-- [ ] Match result calculation (all formats: fourball, foursomes, modified alt shot, scramble, shamble, singles, strokeplay)
-- [ ] Post-round verification flow (organizer + canVerifyScores players)
-- [ ] Skins calculation (lowest unique net, no carryover default)
+- [x] Scorecard component (format-agnostic, data-driven) — with score indicators (birdie/eagle/bogey shapes), running match status row, 18-hole totals
+- [x] Live scoring page (mobile-first entry) — hole-by-hole with auto-advance, finalize match
+- [x] Max stroke cap: scoring engine caps gross at par + maxScore
+- [x] Handicap stroke allocation per format — `strokeAllocation()`, `receivesStroke()`, `receivesDoubleStroke()`
+- [x] Match result calculation (all formats) — `computeMatchState()`, `holeWinner()`, `bestBall()`
+- [x] Post-round verification flow — both-sides attestation with inline tap-to-edit corrections
+- [x] Skins calculation (lowest unique net, carryover optional) — `calculateSkins()` + SkinsTable component
+- [x] Printable scorecards — landscape print layout, one per match, stroke dots, Print All button
 
 ---
 
-## Sprint 4: Results & Analytics ⬜ NOT STARTED
+## Sprint 4: Results & Analytics ✅ COMPLETE
 
-- [ ] Automated leaderboard / team standings
-- [ ] Match results display
-- [ ] Player stats / analytics
-- [ ] Skins results display
-- [ ] MVP calculation and display
-- [ ] Dashboard (tournament hub)
+- [x] Automated leaderboard / team standings — TeamLeaderboard component + standings API
+- [x] Match results display — MatchCard on round page, full Scorecard on match page
+- [x] Player stats / analytics — PlayerLeaderboard + player-stats API (record, avg vs par, birdies, skins)
+- [x] Skins results display — SkinsTable component + skins API on round detail page
+- [x] MVP calculation and display — weighted composite (matchPoints, holesWon, scoring, vsIndex, skins), normalized 0-100, configurable via MVPConfig
+- [x] Dashboard (tournament hub) — Trip page with team standings, player leaderboard, rounds list
 
 ---
 

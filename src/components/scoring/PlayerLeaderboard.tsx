@@ -12,7 +12,11 @@ interface PlayerStat {
   matchesHalved: number
   matchPoints: number
   holesPlayed: number
+  holesWon: number
+  holesLost: number
+  holesHalved: number
   avgVsPar: number
+  netAvgVsPar: number
   birdies: number
   eagles: number
   pars: number
@@ -20,6 +24,7 @@ interface PlayerStat {
   doublesPlus: number
   skinsWon: number
   skinsMoney: number
+  mvpScore: number | null
 }
 
 interface PlayerLeaderboardProps {
@@ -37,6 +42,8 @@ export default function PlayerLeaderboard({ players }: PlayerLeaderboardProps) {
     )
   }
 
+  const hasMvp = players.some(p => p.mvpScore !== null)
+
   return (
     <div className="bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-800">
@@ -48,16 +55,17 @@ export default function PlayerLeaderboard({ players }: PlayerLeaderboardProps) {
           <thead>
             <tr className="text-slate-500 text-xs border-b border-slate-800">
               <th className="text-left px-4 py-2 font-medium">Player</th>
+              {hasMvp && <th className="text-center px-2 py-2 font-medium">MVP</th>}
               <th className="text-center px-2 py-2 font-medium">Record</th>
               <th className="text-center px-2 py-2 font-medium">Pts</th>
-              <th className="text-center px-2 py-2 font-medium">Holes</th>
+              <th className="text-center px-2 py-2 font-medium" title="Holes Won">HW</th>
               <th className="text-center px-2 py-2 font-medium">Avg</th>
               <th className="text-center px-2 py-2 font-medium" title="Birdies or better">Brd</th>
               <th className="text-center px-2 py-2 font-medium">Skins</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {players.map((p) => (
+            {players.map((p, idx) => (
               <tr key={p.tripPlayerId} className="hover:bg-slate-800/30 transition-colors">
                 {/* Player name + team dot */}
                 <td className="px-4 py-2.5 whitespace-nowrap">
@@ -73,6 +81,19 @@ export default function PlayerLeaderboard({ players }: PlayerLeaderboardProps) {
                   </div>
                 </td>
 
+                {/* MVP score */}
+                {hasMvp && (
+                  <td className="text-center px-2 py-2.5">
+                    {p.mvpScore !== null ? (
+                      <span className={`font-bold ${idx === 0 ? 'text-amber-400' : 'text-white'}`}>
+                        {p.mvpScore}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
+                  </td>
+                )}
+
                 {/* Record: W-L-H */}
                 <td className="text-center px-2 py-2.5 text-slate-400 text-xs whitespace-nowrap">
                   {p.matchesPlayed > 0
@@ -85,9 +106,9 @@ export default function PlayerLeaderboard({ players }: PlayerLeaderboardProps) {
                   <span className="text-white font-medium">{p.matchPoints}</span>
                 </td>
 
-                {/* Holes played */}
+                {/* Holes won */}
                 <td className="text-center px-2 py-2.5 text-slate-400">
-                  {p.holesPlayed || '—'}
+                  {p.holesWon || '—'}
                 </td>
 
                 {/* Avg vs par */}
