@@ -219,20 +219,64 @@ export default function TripDashboardPage() {
             </div>
           </Link>
           {isOrganizer && (
-            <Link
-              href={`/setup/players?tripId=${tripId}`}
-              className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white font-medium">Manage Players</p>
-                  <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
-                    Add or remove players, assign teams, update handicaps
-                  </p>
+            <>
+              <Link
+                href={`/setup/players?tripId=${tripId}`}
+                className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Manage Players</p>
+                    <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
+                      Add or remove players, send invitations
+                    </p>
+                  </div>
+                  <span className="text-slate-600 text-sm">&rarr;</span>
                 </div>
-                <span className="text-slate-600 text-sm">&rarr;</span>
-              </div>
-            </Link>
+              </Link>
+              <Link
+                href={`/setup/teams?tripId=${tripId}`}
+                className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Manage Teams</p>
+                    <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
+                      Create teams, assign colors, set defending champion
+                    </p>
+                  </div>
+                  <span className="text-slate-600 text-sm">&rarr;</span>
+                </div>
+              </Link>
+              <Link
+                href={`/setup/courses?tripId=${tripId}`}
+                className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Manage Courses</p>
+                    <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
+                      Add courses and tee boxes
+                    </p>
+                  </div>
+                  <span className="text-slate-600 text-sm">&rarr;</span>
+                </div>
+              </Link>
+              <Link
+                href={`/setup/rounds?tripId=${tripId}`}
+                className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Manage Rounds</p>
+                    <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
+                      Set up rounds, formats, and matchups
+                    </p>
+                  </div>
+                  <span className="text-slate-600 text-sm">&rarr;</span>
+                </div>
+              </Link>
+            </>
           )}
         </div>
 

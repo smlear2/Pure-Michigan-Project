@@ -293,19 +293,19 @@ export default function PlayersSetupPage() {
               >
                 ← Back
               </Button>
+              <Button
+                onClick={() => router.push(`/trips/${tripId}`)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Done
+              </Button>
               <button
                 onClick={() => router.push(`/setup/courses?tripId=${tripId}`)}
                 className="text-sm text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 underline underline-offset-2"
                 style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
               >
-                Skip for now
+                Add courses →
               </button>
-              <Button
-                onClick={() => router.push(`/setup/courses?tripId=${tripId}`)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                Continue →
-              </Button>
             </div>
           </div>
         </div>
