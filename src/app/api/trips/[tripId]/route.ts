@@ -80,6 +80,7 @@ export async function PUT(
     if (validated.pointsForWin !== undefined) updateData.pointsForWin = validated.pointsForWin
     if (validated.pointsForHalf !== undefined) updateData.pointsForHalf = validated.pointsForHalf
     if (validated.pointsToWin !== undefined) updateData.pointsToWin = validated.pointsToWin
+    if (validated.handicapConfig !== undefined) updateData.handicapConfig = validated.handicapConfig
 
     const trip = await prisma.trip.update({
       where: { id: params.tripId },

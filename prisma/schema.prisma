@@ -69,6 +69,7 @@ model Trip {
 
   // Handicap
   handicapFreezeDate DateTime?                   // Handicaps lock on this date (defaults to startDate)
+  handicapConfig     Json?                        // Per-trip handicap allocation settings (percentage, team combos)
 
   // Defending champion (team retains on tie)
   defendingChampionTeamId String?

@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, requireOrganizer, requireTripMember } from '@/lib/auth'
 import { createMatchSchema } from '@/lib/validators/match'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
-import { courseHandicap, playingHandicap } from '@/lib/golf'
+import { courseHandicap, computeMatchHandicaps } from '@/lib/golf'
+import type { HandicapConfig } from '@/lib/golf'
 
 // GET /api/trips/[tripId]/rounds/[roundId]/matches
 export async function GET(
@@ -79,14 +80,28 @@ export async function POST(
       return errorResponse('One or more players not found in this trip', 'VALIDATION_ERROR', 400)
     }
 
-    // Compute course handicaps for each player
-    const playerHandicaps = tripPlayers.map(tp => ({
-      tripPlayerId: tp.id,
-      courseHdcp: courseHandicap(tp.handicapAtTime, round.tee.slope),
-    }))
+    // Load trip handicap config
+    const trip = await prisma.trip.findUnique({
+      where: { id: params.tripId },
+      select: { handicapConfig: true },
+    })
 
-    // Find the lowest course handicap in the group
-    const lowestCourseHdcp = Math.min(...playerHandicaps.map(p => p.courseHdcp))
+    // Build handicap inputs with side info
+    const handicapInputs = validated.players.map(p => {
+      const tp = tripPlayers.find(t => t.id === p.tripPlayerId)!
+      return {
+        tripPlayerId: tp.id,
+        courseHdcp: courseHandicap(tp.handicapAtTime, round.tee.slope),
+        side: p.side,
+      }
+    })
+
+    // Compute format-aware playing handicaps
+    const handicapResults = computeMatchHandicaps(
+      handicapInputs,
+      round.format,
+      trip?.handicapConfig as HandicapConfig | null,
+    )
 
     // Create match with match players in a transaction
     const match = await prisma.$transaction(async (tx) => {
@@ -99,15 +114,14 @@ export async function POST(
 
       // Create match players with computed handicaps
       for (const player of validated.players) {
-        const hdcp = playerHandicaps.find(p => p.tripPlayerId === player.tripPlayerId)!
-        const playingHdcp = playingHandicap(hdcp.courseHdcp, lowestCourseHdcp)
+        const result = handicapResults.find(r => r.tripPlayerId === player.tripPlayerId)!
 
         await tx.matchPlayer.create({
           data: {
             matchId: newMatch.id,
             tripPlayerId: player.tripPlayerId,
-            courseHandicap: hdcp.courseHdcp,
-            playingHandicap: playingHdcp,
+            courseHandicap: result.courseHandicap,
+            playingHandicap: result.playingHandicap,
             side: player.side,
           },
         })

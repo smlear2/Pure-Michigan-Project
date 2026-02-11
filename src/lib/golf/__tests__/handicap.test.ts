@@ -5,7 +5,11 @@ import {
   strokeAllocation,
   receivesStroke,
   receivesDoubleStroke,
+  adjustedHandicap,
+  teamHandicap,
+  computeMatchHandicaps,
   HoleInfo,
+  HandicapConfig,
 } from '../handicap'
 
 describe('courseHandicap', () => {
@@ -125,5 +129,246 @@ describe('receivesDoubleStroke', () => {
     expect(receivesDoubleStroke(20, 1)).toBe(true)
     expect(receivesDoubleStroke(20, 2)).toBe(true)
     expect(receivesDoubleStroke(20, 3)).toBe(false)
+  })
+})
+
+// ===== New configurable handicap tests =====
+
+describe('adjustedHandicap', () => {
+  it('applies 80% to course handicap (rounds UP)', () => {
+    // 18 * 80/100 = 14.4 → ceil = 15
+    expect(adjustedHandicap(18, 80)).toBe(15)
+  })
+
+  it('100% returns unchanged', () => {
+    expect(adjustedHandicap(18, 100)).toBe(18)
+  })
+
+  it('handles 0%', () => {
+    expect(adjustedHandicap(18, 0)).toBe(0)
+  })
+
+  it('rounds UP (ROUNDUP / ceil)', () => {
+    // 15 * 80/100 = 12.0 → 12
+    expect(adjustedHandicap(15, 80)).toBe(12)
+    // 11 * 80/100 = 8.8 → 9
+    expect(adjustedHandicap(11, 80)).toBe(9)
+    // 5 * 80/100 = 4.0 → 4
+    expect(adjustedHandicap(5, 80)).toBe(4)
+    // 6 * 80/100 = 4.8 → 5 (rounds UP, not to nearest)
+    expect(adjustedHandicap(6, 80)).toBe(5)
+    // 9 * 80/100 = 7.2 → 8 (rounds UP)
+    expect(adjustedHandicap(9, 80)).toBe(8)
+  })
+})
+
+describe('teamHandicap', () => {
+  it('calculates foursomes-style 60/40', () => {
+    // low=10, high=18 → round(10*60/100 + 18*40/100) = round(6 + 7.2) = round(13.2) = 13
+    expect(teamHandicap([10, 18], 60, 40)).toBe(13)
+  })
+
+  it('calculates scramble-style 35/15', () => {
+    // low=10, high=18 → round(10*35/100 + 18*15/100) = round(3.5 + 2.7) = round(6.2) = 6
+    expect(teamHandicap([10, 18], 35, 15)).toBe(6)
+  })
+
+  it('sorts players regardless of input order', () => {
+    expect(teamHandicap([18, 10], 60, 40)).toBe(teamHandicap([10, 18], 60, 40))
+  })
+
+  it('handles single player', () => {
+    expect(teamHandicap([10], 60, 40)).toBe(6) // round(10*60/100) = 6
+  })
+
+  it('handles equal handicaps', () => {
+    // low=15, high=15 → round(15*60/100 + 15*40/100) = round(9 + 6) = 15
+    expect(teamHandicap([15, 15], 60, 40)).toBe(15)
+  })
+
+  it('handles empty array', () => {
+    expect(teamHandicap([], 60, 40)).toBe(0)
+  })
+})
+
+describe('computeMatchHandicaps', () => {
+  describe('individual formats', () => {
+    it('user example: hdcps 4,8,12,16 at 100% → playing 0,4,8,12', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 4, side: 1 },
+        { tripPlayerId: 'b', courseHdcp: 8, side: 1 },
+        { tripPlayerId: 'c', courseHdcp: 12, side: 2 },
+        { tripPlayerId: 'd', courseHdcp: 16, side: 2 },
+      ]
+      const results = computeMatchHandicaps(players, 'FOURBALL', null) // null = 100% default
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(4)
+      expect(results.find(r => r.tripPlayerId === 'c')!.playingHandicap).toBe(8)
+      expect(results.find(r => r.tripPlayerId === 'd')!.playingHandicap).toBe(12)
+    })
+
+    it('applies 80% then off the low for fourball', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 5, side: 1 },   // adj = 4
+        { tripPlayerId: 'b', courseHdcp: 10, side: 1 },  // adj = 8
+        { tripPlayerId: 'c', courseHdcp: 15, side: 2 },  // adj = 12
+        { tripPlayerId: 'd', courseHdcp: 20, side: 2 },  // adj = 16
+      ]
+      const config: HandicapConfig = { percentage: 80, offTheLow: true }
+      const results = computeMatchHandicaps(players, 'FOURBALL', config)
+      // lowest adjusted = 4
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(4)
+      expect(results.find(r => r.tripPlayerId === 'c')!.playingHandicap).toBe(8)
+      expect(results.find(r => r.tripPlayerId === 'd')!.playingHandicap).toBe(12)
+    })
+
+    it('applies 80% then off the low for singles', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 10, side: 1 },  // adj = 8
+        { tripPlayerId: 'b', courseHdcp: 20, side: 2 },  // adj = 16
+      ]
+      const config: HandicapConfig = { percentage: 80, offTheLow: true }
+      const results = computeMatchHandicaps(players, 'SINGLES', config)
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(8)
+    })
+
+    it('preserves courseHandicap in results', () => {
+      const players = [{ tripPlayerId: 'a', courseHdcp: 18, side: 1 }]
+      const config: HandicapConfig = { percentage: 80, offTheLow: true }
+      const results = computeMatchHandicaps(players, 'SINGLES', config)
+      expect(results[0].courseHandicap).toBe(18)
+    })
+  })
+
+  describe('team formats', () => {
+    it('foursomes: 80% then 60/40 split, off the low team', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 5, side: 1 },   // adj = 4
+        { tripPlayerId: 'b', courseHdcp: 15, side: 1 },  // adj = 12
+        { tripPlayerId: 'c', courseHdcp: 10, side: 2 },  // adj = 8
+        { tripPlayerId: 'd', courseHdcp: 20, side: 2 },  // adj = 16
+      ]
+      const config: HandicapConfig = {
+        percentage: 80,
+        offTheLow: true,
+        teamCombos: { FOURSOMES: { lowPct: 60, highPct: 40 } },
+      }
+      const results = computeMatchHandicaps(players, 'FOURSOMES', config)
+      // Side 1: low=4, high=12 → round(4*0.6 + 12*0.4) = round(2.4 + 4.8) = round(7.2) = 7
+      // Side 2: low=8, high=16 → round(8*0.6 + 16*0.4) = round(4.8 + 6.4) = round(11.2) = 11
+      // lowest team = 7
+      // Side 1 playing = 0, Side 2 playing = 4
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'c')!.playingHandicap).toBe(4)
+      expect(results.find(r => r.tripPlayerId === 'd')!.playingHandicap).toBe(4)
+    })
+
+    it('scramble: 80% then 35/15 split, off the low team', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 5, side: 1 },   // adj = 4
+        { tripPlayerId: 'b', courseHdcp: 15, side: 1 },  // adj = 12
+        { tripPlayerId: 'c', courseHdcp: 10, side: 2 },  // adj = 8
+        { tripPlayerId: 'd', courseHdcp: 20, side: 2 },  // adj = 16
+      ]
+      const config: HandicapConfig = {
+        percentage: 80,
+        offTheLow: true,
+        teamCombos: { SCRAMBLE: { lowPct: 35, highPct: 15 } },
+      }
+      const results = computeMatchHandicaps(players, 'SCRAMBLE', config)
+      // Side 1: low=4, high=12 → round(4*0.35 + 12*0.15) = round(1.4 + 1.8) = round(3.2) = 3
+      // Side 2: low=8, high=16 → round(8*0.35 + 16*0.15) = round(2.8 + 2.4) = round(5.2) = 5
+      // lowest team = 3
+      // Side 1 playing = 0, Side 2 playing = 2
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'c')!.playingHandicap).toBe(2)
+      expect(results.find(r => r.tripPlayerId === 'd')!.playingHandicap).toBe(2)
+    })
+
+    it('both players on same side get same playing handicap', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 10, side: 1 },
+        { tripPlayerId: 'b', courseHdcp: 20, side: 1 },
+        { tripPlayerId: 'c', courseHdcp: 10, side: 2 },
+        { tripPlayerId: 'd', courseHdcp: 20, side: 2 },
+      ]
+      const config: HandicapConfig = {
+        percentage: 100,
+        offTheLow: true,
+        teamCombos: { FOURSOMES: { lowPct: 60, highPct: 40 } },
+      }
+      const results = computeMatchHandicaps(players, 'FOURSOMES', config)
+      const aHdcp = results.find(r => r.tripPlayerId === 'a')!.playingHandicap
+      const bHdcp = results.find(r => r.tripPlayerId === 'b')!.playingHandicap
+      expect(aHdcp).toBe(bHdcp)
+    })
+
+    it('falls back to individual logic when no team combo configured', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 10, side: 1 },
+        { tripPlayerId: 'b', courseHdcp: 20, side: 1 },
+        { tripPlayerId: 'c', courseHdcp: 15, side: 2 },
+        { tripPlayerId: 'd', courseHdcp: 25, side: 2 },
+      ]
+      // Config with percentage but no team combo for FOURSOMES
+      const config: HandicapConfig = { percentage: 80, offTheLow: true }
+      const results = computeMatchHandicaps(players, 'FOURSOMES', config)
+      // Falls back to individual: each player gets ceil(80%), then off the low
+      // adj: ceil(8)=8, ceil(16)=16, ceil(12)=12, ceil(20)=20 → lowest = 8 → playing: 0, 8, 4, 12
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(8)
+      expect(results.find(r => r.tripPlayerId === 'c')!.playingHandicap).toBe(4)
+      expect(results.find(r => r.tripPlayerId === 'd')!.playingHandicap).toBe(12)
+    })
+  })
+
+  describe('maxHandicap cap', () => {
+    it('caps adjusted handicap at maxHandicap for individual formats', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 4, side: 1 },   // adj = ceil(3.2) = 4
+        { tripPlayerId: 'b', courseHdcp: 27, side: 2 },   // adj = ceil(21.6) = 22 → capped to 20
+      ]
+      const config: HandicapConfig = { percentage: 80, offTheLow: true, maxHandicap: 20 }
+      const results = computeMatchHandicaps(players, 'SINGLES', config)
+      // After cap: a=4, b=20. Off the low: a=0, b=16
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(16)
+    })
+
+    it('caps adjusted handicap at maxHandicap for team formats', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 9, side: 1 },   // adj = ceil(7.2) = 8
+        { tripPlayerId: 'b', courseHdcp: 26, side: 1 },   // adj = ceil(20.8) = 21 → capped to 20
+        { tripPlayerId: 'c', courseHdcp: 12, side: 2 },   // adj = ceil(9.6) = 10
+        { tripPlayerId: 'd', courseHdcp: 27, side: 2 },   // adj = ceil(21.6) = 22 → capped to 20
+      ]
+      const config: HandicapConfig = {
+        percentage: 80, offTheLow: true, maxHandicap: 20,
+        teamCombos: { FOURSOMES: { lowPct: 60, highPct: 40 } },
+      }
+      const results = computeMatchHandicaps(players, 'FOURSOMES', config)
+      // Side 1: [8, 20] → round(8*0.6 + 20*0.4) = round(4.8 + 8) = round(12.8) = 13
+      // Side 2: [10, 20] → round(10*0.6 + 20*0.4) = round(6 + 8) = round(14) = 14
+      // Off the low: S1=0, S2=1
+      expect(results.find(r => r.tripPlayerId === 'a')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(0)
+      expect(results.find(r => r.tripPlayerId === 'c')!.playingHandicap).toBe(1)
+      expect(results.find(r => r.tripPlayerId === 'd')!.playingHandicap).toBe(1)
+    })
+
+    it('no cap when maxHandicap is null', () => {
+      const players = [
+        { tripPlayerId: 'a', courseHdcp: 4, side: 1 },
+        { tripPlayerId: 'b', courseHdcp: 27, side: 2 },
+      ]
+      const config: HandicapConfig = { percentage: 80, offTheLow: true, maxHandicap: null }
+      const results = computeMatchHandicaps(players, 'SINGLES', config)
+      // adj: ceil(3.2)=4, ceil(21.6)=22. Off the low: 0, 18
+      expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(18)
+    })
   })
 })

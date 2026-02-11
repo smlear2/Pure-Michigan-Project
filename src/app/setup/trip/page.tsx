@@ -26,6 +26,16 @@ export default function TripSetupPage() {
     pointsForHalf: 0.5,
   })
 
+  const [handicapConfig, setHandicapConfig] = useState({
+    percentage: 80,
+    offTheLow: true,
+    maxHandicap: '' as string | number,
+    foursomesLow: 60,
+    foursomesHigh: 40,
+    scrambleLow: 35,
+    scrambleHigh: 15,
+  })
+
   // Load existing trip if editing
   useEffect(() => {
     if (!tripId) return
@@ -44,6 +54,18 @@ export default function TripSetupPage() {
             pointsForWin: data.pointsForWin ?? 1,
             pointsForHalf: data.pointsForHalf ?? 0.5,
           })
+          if (data.handicapConfig) {
+            const hc = data.handicapConfig
+            setHandicapConfig({
+              percentage: hc.percentage ?? 80,
+              offTheLow: hc.offTheLow ?? true,
+              maxHandicap: hc.maxHandicap ?? '',
+              foursomesLow: hc.teamCombos?.FOURSOMES?.lowPct ?? 60,
+              foursomesHigh: hc.teamCombos?.FOURSOMES?.highPct ?? 40,
+              scrambleLow: hc.teamCombos?.SCRAMBLE?.lowPct ?? 35,
+              scrambleHigh: hc.teamCombos?.SCRAMBLE?.highPct ?? 15,
+            })
+          }
         }
       })
       .catch(() => setError('Failed to load trip'))
@@ -72,11 +94,25 @@ export default function TripSetupPage() {
     setError('')
 
     try {
+      const teamCombos: Record<string, { lowPct: number; highPct: number }> = {}
+      if (handicapConfig.foursomesLow || handicapConfig.foursomesHigh) {
+        teamCombos.FOURSOMES = { lowPct: Number(handicapConfig.foursomesLow), highPct: Number(handicapConfig.foursomesHigh) }
+      }
+      if (handicapConfig.scrambleLow || handicapConfig.scrambleHigh) {
+        teamCombos.SCRAMBLE = { lowPct: Number(handicapConfig.scrambleLow), highPct: Number(handicapConfig.scrambleHigh) }
+      }
+
       const payload = {
         ...formData,
         year: Number(formData.year),
         pointsForWin: Number(formData.pointsForWin),
         pointsForHalf: Number(formData.pointsForHalf),
+        handicapConfig: {
+          percentage: Number(handicapConfig.percentage),
+          offTheLow: handicapConfig.offTheLow,
+          maxHandicap: handicapConfig.maxHandicap !== '' ? Number(handicapConfig.maxHandicap) : null,
+          teamCombos: Object.keys(teamCombos).length > 0 ? teamCombos : undefined,
+        },
       }
 
       const url = tripId ? `/api/trips/${tripId}` : '/api/trips'
@@ -332,6 +368,132 @@ export default function TripSetupPage() {
                   </div>
                 </div>
               )}
+
+              {/* Handicap Settings */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/30">
+                <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-3">
+                  Handicap Settings
+                </label>
+                <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">
+                  Configure how handicaps are calculated for matches. Applied as ROUNDUP(course handicap x percentage).
+                </p>
+
+                <div className="space-y-4">
+                  {/* Percentage + Max */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">
+                        Handicap %
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={handicapConfig.percentage}
+                        onChange={(e) => setHandicapConfig((prev) => ({ ...prev, percentage: Number(e.target.value) }))}
+                        className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">
+                        Max Handicap
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="No cap"
+                        value={handicapConfig.maxHandicap}
+                        onChange={(e) => setHandicapConfig((prev) => ({ ...prev, maxHandicap: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Off the Low toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={handicapConfig.offTheLow}
+                      onChange={(e) => setHandicapConfig((prev) => ({ ...prev, offTheLow: e.target.checked }))}
+                      className="w-4 h-4 accent-emerald-600 rounded"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-gray-300">
+                      Play off the low (strokes relative to lowest handicap)
+                    </span>
+                  </label>
+
+                  {/* Team Format Combos */}
+                  {formData.isTeamEvent && (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <label className="block text-xs font-medium text-slate-600 dark:text-gray-400 mb-3">
+                        Team Format Combinations
+                      </label>
+
+                      {/* Foursomes */}
+                      <div className="mb-3">
+                        <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">
+                          Foursomes (Alternate Shot)
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-400 dark:text-gray-500 mb-0.5">Low %</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={handicapConfig.foursomesLow}
+                              onChange={(e) => setHandicapConfig((prev) => ({ ...prev, foursomesLow: Number(e.target.value) }))}
+                              className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-400 dark:text-gray-500 mb-0.5">High %</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={handicapConfig.foursomesHigh}
+                              onChange={(e) => setHandicapConfig((prev) => ({ ...prev, foursomesHigh: Number(e.target.value) }))}
+                              className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Scramble */}
+                      <div>
+                        <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">
+                          Scramble
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-400 dark:text-gray-500 mb-0.5">Low %</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={handicapConfig.scrambleLow}
+                              onChange={(e) => setHandicapConfig((prev) => ({ ...prev, scrambleLow: Number(e.target.value) }))}
+                              className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-400 dark:text-gray-500 mb-0.5">High %</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={handicapConfig.scrambleHigh}
+                              onChange={(e) => setHandicapConfig((prev) => ({ ...prev, scrambleHigh: Number(e.target.value) }))}
+                              className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-4">

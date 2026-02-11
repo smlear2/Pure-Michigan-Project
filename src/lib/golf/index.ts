@@ -8,8 +8,19 @@ export {
   strokeAllocation,
   receivesStroke,
   receivesDoubleStroke,
+  adjustedHandicap,
+  teamHandicap,
+  computeMatchHandicaps,
+  isTeamFormat,
+  DEFAULT_HANDICAP_CONFIG,
 } from './handicap'
-export type { HoleInfo } from './handicap'
+export type {
+  HoleInfo,
+  HandicapConfig,
+  TeamCombo,
+  PlayerHandicapInput,
+  PlayerHandicapResult,
+} from './handicap'
 
 export { applyMaxScore, netScore } from './scoring'
 
