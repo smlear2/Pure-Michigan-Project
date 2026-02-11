@@ -157,11 +157,11 @@ export default function TeamsSetupPage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="mb-6">
           <button
-            onClick={() => router.push(`/setup/trip?tripId=${tripId}`)}
+            onClick={() => router.push(`/trips/${tripId}`)}
             className="text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors text-sm flex items-center gap-1"
             style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
           >
-            ← Back to Trip Setup
+            ← Back to Trip
           </button>
         </div>
 
