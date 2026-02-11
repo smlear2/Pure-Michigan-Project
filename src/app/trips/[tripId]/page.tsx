@@ -246,8 +246,8 @@ export default function TripDashboardPage() {
           </div>
         )}
 
-        {/* Team Leaderboard */}
-        {standings && (
+        {/* Team Leaderboard — only show once matches have been played */}
+        {standings && standings.totalMatchesPlayed > 0 && (
           <div className="mb-6">
             <TeamLeaderboard
               standings={standings.standings}
@@ -257,8 +257,8 @@ export default function TripDashboardPage() {
           </div>
         )}
 
-        {/* Player Leaderboard */}
-        {playerStats && playerStats.players && (
+        {/* Player Leaderboard — only show once there are stats */}
+        {playerStats && playerStats.players && playerStats.players.length > 0 && rounds.length > 0 && (
           <div className="mb-6">
             <PlayerLeaderboard players={playerStats.players} />
           </div>
