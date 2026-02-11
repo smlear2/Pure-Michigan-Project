@@ -5,26 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-interface Team {
-  id: string
-  name: string
-  color: string
-}
-
 interface TripPlayer {
   id: string
-  teamId: string | null
-  handicapAtTime: number
   role: 'ORGANIZER' | 'PLAYER'
   isPending?: boolean
   user: {
     id: string
     name: string
     email: string
-    handicapIndex: number | null
-    ghinNumber: string | null
   }
-  team: { id: string; name: string; color: string } | null
 }
 
 export default function PlayersSetupPage() {
@@ -32,9 +21,8 @@ export default function PlayersSetupPage() {
   const searchParams = useSearchParams()
   const tripId = searchParams.get('tripId')
 
-  const [teams, setTeams] = useState<Team[]>([])
   const [players, setPlayers] = useState<TripPlayer[]>([])
-  const [newPlayer, setNewPlayer] = useState({ name: '', email: '', ghinNumber: '', handicapIndex: '', teamId: '' })
+  const [newPlayer, setNewPlayer] = useState({ name: '', email: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -47,17 +35,10 @@ export default function PlayersSetupPage() {
       return
     }
 
-    Promise.all([
-      fetch(`/api/trips/${tripId}/teams`).then((r) => r.json()),
-      fetch(`/api/trips/${tripId}/players`).then((r) => r.json()),
-    ])
-      .then(([teamsRes, playersRes]) => {
-        const loadedTeams = teamsRes.data || []
-        setTeams(loadedTeams)
+    fetch(`/api/trips/${tripId}/players`)
+      .then((r) => r.json())
+      .then((playersRes) => {
         setPlayers(playersRes.data || [])
-        if (loadedTeams.length > 0 && !newPlayer.teamId) {
-          setNewPlayer((prev) => ({ ...prev, teamId: loadedTeams[0].id }))
-        }
       })
       .catch(() => setError('Failed to load data'))
       .finally(() => setLoading(false))
@@ -83,9 +64,6 @@ export default function PlayersSetupPage() {
         body: JSON.stringify({
           name: newPlayer.name.trim(),
           email: newPlayer.email.trim(),
-          ghinNumber: newPlayer.ghinNumber.trim() || undefined,
-          handicapIndex: newPlayer.handicapIndex ? Number(newPlayer.handicapIndex) : undefined,
-          teamId: newPlayer.teamId || undefined,
         }),
       })
 
@@ -96,7 +74,7 @@ export default function PlayersSetupPage() {
       }
 
       setPlayers((prev) => [...prev, json.data])
-      setNewPlayer({ name: '', email: '', ghinNumber: '', handicapIndex: '', teamId: newPlayer.teamId })
+      setNewPlayer({ name: '', email: '' })
     } catch {
       setError('Failed to add player')
     } finally {
@@ -112,23 +90,6 @@ export default function PlayersSetupPage() {
       }
     } catch {
       setError('Failed to remove player')
-    }
-  }
-
-  const movePlayer = async (playerId: string, newTeamId: string) => {
-    try {
-      const res = await fetch(`/api/trips/${tripId}/players/${playerId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId: newTeamId || null }),
-      })
-
-      if (res.ok) {
-        const json = await res.json()
-        setPlayers(players.map((p) => (p.id === playerId ? json.data : p)))
-      }
-    } catch {
-      setError('Failed to move player')
     }
   }
 
@@ -167,8 +128,6 @@ export default function PlayersSetupPage() {
     }
   }
 
-  const getTeamPlayers = (teamId: string) => players.filter((p) => p.teamId === teamId)
-
   const renderPlayerRow = (player: TripPlayer) => (
     <div key={player.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 group">
       <div className="flex-1 min-w-0">
@@ -177,6 +136,11 @@ export default function PlayersSetupPage() {
           {player.isPending && (
             <span className="text-xs bg-sky-900/30 text-sky-400 px-1.5 py-0.5 rounded shrink-0" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
               Invited
+            </span>
+          )}
+          {!player.isPending && (
+            <span className="text-xs bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded shrink-0" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+              Joined
             </span>
           )}
           {player.role === 'ORGANIZER' && (
@@ -205,31 +169,6 @@ export default function PlayersSetupPage() {
         >
           {player.role === 'ORGANIZER' ? '\u2212org' : '+org'}
         </button>
-        {player.user.ghinNumber && (
-          <span className="text-xs text-slate-400 dark:text-gray-500" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-            #{player.user.ghinNumber}
-          </span>
-        )}
-        <span
-          className="text-emerald-600 dark:text-emerald-400 font-medium text-sm min-w-[3rem] text-right"
-          style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
-        >
-          {player.handicapAtTime || '\u2014'}
-        </span>
-        {teams.length > 0 && (
-          <select
-            value={player.teamId || ''}
-            onChange={(e) => movePlayer(player.id, e.target.value)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity w-20 h-7 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-gray-300"
-          >
-            <option value="">None</option>
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        )}
         <button
           onClick={() => removePlayer(player.id)}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
@@ -321,78 +260,23 @@ export default function PlayersSetupPage() {
         </div>
 
         {/* Players list */}
-        {players.filter((p) => !p.teamId).length > 0 && (
+        {players.length > 0 && (
           <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-800/50 rounded-xl overflow-hidden mb-6">
             <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/50">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                {teams.length > 0 ? 'Unassigned' : 'Players'}
-              </h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Players</h3>
               <span
                 className="text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded"
                 style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
               >
-                {players.filter((p) => !p.teamId).length} players
+                {players.length} players
               </span>
             </div>
             <div className="p-4">
               <div className="space-y-2">
-                {players
-                  .filter((p) => !p.teamId)
-                  .sort((a, b) => (a.handicapAtTime || 99) - (b.handicapAtTime || 99))
-                  .map((player) => renderPlayerRow(player))}
+                {players.map((player) => renderPlayerRow(player))}
               </div>
             </div>
           </div>
-        )}
-
-        {/* Teams with players */}
-        {teams.length > 0 && (
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-          {teams.map((team) => {
-            const teamPlayers = getTeamPlayers(team.id)
-            return (
-              <div
-                key={team.id}
-                className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-800/50 rounded-xl overflow-hidden"
-              >
-                <div className="p-4 flex items-center justify-between" style={{ backgroundColor: team.color }}>
-                  <h3 className="text-lg font-semibold text-white">{team.name}</h3>
-                  <span
-                    className="text-sm text-white/80 bg-white/20 px-2 py-0.5 rounded"
-                    style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
-                  >
-                    {teamPlayers.length} players
-                  </span>
-                </div>
-                <div className="p-4">
-                  {teamPlayers.length === 0 ? (
-                    <p className="text-slate-500 dark:text-gray-400 text-center py-8">No players yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {teamPlayers
-                        .sort((a, b) => (a.handicapAtTime || 99) - (b.handicapAtTime || 99))
-                        .map((player) => renderPlayerRow(player))}
-                    </div>
-                  )}
-
-                  {teamPlayers.length > 0 && (
-                    <div
-                      className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-gray-400"
-                      style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
-                    >
-                      <div className="flex justify-between">
-                        <span>Avg handicap:</span>
-                        <span className="text-slate-700 dark:text-gray-300">
-                          {(teamPlayers.reduce((sum, p) => sum + (p.handicapAtTime || 0), 0) / teamPlayers.length).toFixed(1)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
         )}
 
         {/* Summary and navigation */}
@@ -400,11 +284,6 @@ export default function PlayersSetupPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="text-sm text-slate-600 dark:text-gray-400" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
               <strong className="text-slate-900 dark:text-white">{players.length}</strong> players total
-              {teams.length > 0 && (
-                <span className="ml-4">
-                  {teams.map((t) => `${t.name}: ${getTeamPlayers(t.id).length}`).join(' · ')}
-                </span>
-              )}
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
