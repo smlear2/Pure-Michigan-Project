@@ -246,6 +246,48 @@ export default function TripDashboardPage() {
           </div>
         )}
 
+        {/* Participants */}
+        {trip?.tripPlayers && trip.tripPlayers.length > 0 && (
+          <div className="mb-6 bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 overflow-hidden">
+            <div className="px-4 py-3 flex items-center justify-between border-b border-slate-800">
+              <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
+                Participants
+              </h2>
+              <span className="text-sm text-slate-500 bg-slate-800 px-2 py-0.5 rounded" style={monoFont}>
+                {trip.tripPlayers.length}
+              </span>
+            </div>
+            <div className="p-3 space-y-1">
+              {trip.tripPlayers.map((tp: any) => (
+                <div key={tp.id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-white truncate">{tp.user?.name}</span>
+                    {tp.user?.supabaseId?.startsWith('pending-') ? (
+                      <span className="text-xs bg-sky-900/30 text-sky-400 px-1.5 py-0.5 rounded shrink-0" style={monoFont}>
+                        Invited
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded shrink-0" style={monoFont}>
+                        Joined
+                      </span>
+                    )}
+                    {tp.role === 'ORGANIZER' && (
+                      <span className="text-xs bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded shrink-0" style={monoFont}>
+                        Org
+                      </span>
+                    )}
+                  </div>
+                  {tp.team && (
+                    <span className="text-xs text-slate-400 shrink-0 ml-2" style={monoFont}>
+                      {tp.team.name}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Team Leaderboard — only show once matches have been played */}
         {standings && standings.totalMatchesPlayed > 0 && (
           <div className="mb-6">

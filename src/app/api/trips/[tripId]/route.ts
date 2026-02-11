@@ -23,7 +23,7 @@ export async function GET(
         tripPlayers: {
           include: {
             user: {
-              select: { id: true, name: true, email: true, handicapIndex: true },
+              select: { id: true, name: true, email: true, handicapIndex: true, supabaseId: true },
             },
           },
         },
