@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import TeamLeaderboard from '@/components/scoring/TeamLeaderboard'
 import PlayerLeaderboard from '@/components/scoring/PlayerLeaderboard'
+import { createClient } from '@/lib/supabase/client'
 
 export default function TripDashboardPage() {
   const params = useParams()
@@ -15,6 +16,12 @@ export default function TripDashboardPage() {
   const [rounds, setRounds] = useState<any[]>([])
   const [trip, setTrip] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [isOrganizer, setIsOrganizer] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editLocation, setEditLocation] = useState('')
+  const [editYear, setEditYear] = useState(0)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -44,6 +51,16 @@ export default function TripDashboardPage() {
         if (tripRes.ok) {
           const json = await tripRes.json()
           setTrip(json.data)
+
+          // Check if current user is an organizer
+          const supabase = createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && json.data?.tripPlayers) {
+            const me = json.data.tripPlayers.find(
+              (tp: any) => tp.user?.email === user.email
+            )
+            if (me?.role === 'ORGANIZER') setIsOrganizer(true)
+          }
         }
       } catch (err) {
         console.error('Failed to load trip:', err)
@@ -53,6 +70,31 @@ export default function TripDashboardPage() {
     }
     load()
   }, [tripId])
+
+  function startEditing() {
+    setEditName(trip.name || '')
+    setEditLocation(trip.location || '')
+    setEditYear(trip.year || new Date().getFullYear())
+    setEditing(true)
+  }
+
+  async function saveTrip() {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/trips/${tripId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName, location: editLocation, year: editYear }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setTrip({ ...trip, name: json.data.name, location: json.data.location, year: json.data.year })
+        setEditing(false)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const monoFont = { fontFamily: 'var(--font-dm-mono), monospace' }
 
@@ -68,15 +110,76 @@ export default function TripDashboardPage() {
     <div className="min-h-screen bg-slate-950">
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Trip header */}
-        {trip && (
+        {trip && !editing && (
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
-              {trip.name}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-fraunces), serif' }}>
+                {trip.name}
+              </h1>
+              {isOrganizer && (
+                <button
+                  onClick={startEditing}
+                  className="text-slate-600 hover:text-slate-400 transition-colors p-1"
+                  title="Edit trip details"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-3 mt-1 text-sm text-slate-400" style={monoFont}>
               {trip.location && <span>{trip.location}</span>}
               {trip.location && <span>&middot;</span>}
               <span>{trip.year}</span>
+            </div>
+          </div>
+        )}
+        {trip && editing && (
+          <div className="mb-6 bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 p-4 space-y-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" style={monoFont}>Trip Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600"
+              />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1" style={monoFont}>Location</label>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={e => setEditLocation(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+              <div className="w-24">
+                <label className="block text-xs text-slate-500 mb-1" style={monoFont}>Year</label>
+                <input
+                  type="number"
+                  value={editYear}
+                  onChange={e => setEditYear(parseInt(e.target.value) || 0)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={saveTrip}
+                disabled={saving || !editName.trim()}
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="px-4 py-1.5 text-slate-400 hover:text-white text-sm transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
