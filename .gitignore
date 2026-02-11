@@ -46,3 +46,9 @@ prisma/migrations/
 
 # Archives
 *.zip
+
+# Excel temp files
+~$*
+
+.vercel
+nul
