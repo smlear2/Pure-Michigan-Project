@@ -199,9 +199,9 @@ export default function PlayersSetupPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Player Name *</label>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Name</label>
                 <Input
                   value={newPlayer.name}
                   onChange={(e) => setNewPlayer((prev) => ({ ...prev, name: e.target.value }))}
@@ -210,8 +210,8 @@ export default function PlayersSetupPage() {
                   className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Email *</label>
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Email</label>
                 <Input
                   type="email"
                   value={newPlayer.email}
@@ -221,56 +221,8 @@ export default function PlayersSetupPage() {
                   className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">GHIN #</label>
-                <Input
-                  value={newPlayer.ghinNumber}
-                  onChange={(e) => setNewPlayer((prev) => ({ ...prev, ghinNumber: e.target.value }))}
-                  onKeyDown={handleKeyPress}
-                  placeholder="1234567"
-                  className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Handicap Index</label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={newPlayer.handicapIndex}
-                  onChange={(e) => setNewPlayer((prev) => ({ ...prev, handicapIndex: e.target.value }))}
-                  onKeyDown={handleKeyPress}
-                  placeholder="12.4"
-                  className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-                />
-              </div>
-              {teams.length > 0 && (
-                <div>
-                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Team</label>
-                  <select
-                    value={newPlayer.teamId}
-                    onChange={(e) => setNewPlayer((prev) => ({ ...prev, teamId: e.target.value }))}
-                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 px-3 text-slate-900 dark:text-white text-sm"
-                  >
-                    <option value="">No team</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500 dark:text-gray-400" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-                Press Enter to quickly add players
-              </p>
-              <Button onClick={addPlayer} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                {saving ? 'Adding...' : 'Add Player'}
+              <Button onClick={addPlayer} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0">
+                {saving ? 'Adding...' : 'Add'}
               </Button>
             </div>
           </div>
