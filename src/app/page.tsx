@@ -102,7 +102,7 @@ export default async function Home() {
                 }
 
                 return (
-                  <Link key={trip.id} href={`/trip/${trip.id}`} className="block group">
+                  <Link key={trip.id} href={`/trips/${trip.id}`} className="block group">
                     <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-800/50 rounded-xl p-6 sm:p-8 hover:border-emerald-500/50 dark:hover:border-emerald-500/30 transition-all">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
