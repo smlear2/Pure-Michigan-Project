@@ -203,7 +203,7 @@ export default function TripDashboardPage() {
         )}
 
         {/* Quick links */}
-        <div className="mb-6">
+        <div className="mb-6 space-y-2">
           <Link
             href={`/trips/${tripId}/finances`}
             className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
@@ -218,6 +218,22 @@ export default function TripDashboardPage() {
               <span className="text-slate-600 text-sm">&rarr;</span>
             </div>
           </Link>
+          {isOrganizer && (
+            <Link
+              href={`/setup/players?tripId=${tripId}`}
+              className="block bg-slate-900/60 backdrop-blur rounded-xl border border-slate-800 hover:border-emerald-800 transition-colors px-4 py-3"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-medium">Manage Players</p>
+                  <p className="text-xs text-slate-500 mt-0.5" style={monoFont}>
+                    Add or remove players, assign teams, update handicaps
+                  </p>
+                </div>
+                <span className="text-slate-600 text-sm">&rarr;</span>
+              </div>
+            </Link>
+          )}
         </div>
 
         {/* Rounds list */}
