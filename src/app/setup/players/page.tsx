@@ -16,6 +16,7 @@ interface TripPlayer {
   teamId: string | null
   handicapAtTime: number
   role: 'ORGANIZER' | 'PLAYER'
+  isPending?: boolean
   user: {
     id: string
     name: string
@@ -37,6 +38,8 @@ export default function PlayersSetupPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [resending, setResending] = useState<string | null>(null)
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (!tripId) {
@@ -146,7 +149,96 @@ export default function PlayersSetupPage() {
     }
   }
 
+  const resendInvite = async (playerId: string) => {
+    setResending(playerId)
+    setResendSuccess(null)
+    try {
+      const res = await fetch(`/api/trips/${tripId}/players/${playerId}/invite`, { method: 'POST' })
+      if (res.ok) {
+        setResendSuccess(playerId)
+        setTimeout(() => setResendSuccess(null), 3000)
+      } else {
+        setError('Failed to resend invitation')
+      }
+    } catch {
+      setError('Failed to resend invitation')
+    } finally {
+      setResending(null)
+    }
+  }
+
   const getTeamPlayers = (teamId: string) => players.filter((p) => p.teamId === teamId)
+
+  const renderPlayerRow = (player: TripPlayer) => (
+    <div key={player.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 group">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-slate-900 dark:text-white truncate">{player.user.name}</span>
+          {player.isPending && (
+            <span className="text-xs bg-sky-900/30 text-sky-400 px-1.5 py-0.5 rounded shrink-0" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+              Invited
+            </span>
+          )}
+          {player.role === 'ORGANIZER' && (
+            <span className="text-xs bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded shrink-0" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+              Org
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-slate-500 dark:text-gray-400 truncate">{player.user.email}</div>
+      </div>
+      <div className="flex items-center gap-2 ml-2">
+        {player.isPending && (
+          <button
+            onClick={() => resendInvite(player.id)}
+            disabled={resending === player.id}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-sky-500 hover:text-sky-400 px-1 disabled:opacity-50"
+            title="Resend invitation email"
+          >
+            {resending === player.id ? '...' : resendSuccess === player.id ? 'Sent!' : 'Resend'}
+          </button>
+        )}
+        <button
+          onClick={() => toggleRole(player.id, player.role)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-amber-400 px-1"
+          title={player.role === 'ORGANIZER' ? 'Remove organizer role' : 'Make organizer'}
+        >
+          {player.role === 'ORGANIZER' ? '\u2212org' : '+org'}
+        </button>
+        {player.user.ghinNumber && (
+          <span className="text-xs text-slate-400 dark:text-gray-500" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+            #{player.user.ghinNumber}
+          </span>
+        )}
+        <span
+          className="text-emerald-600 dark:text-emerald-400 font-medium text-sm min-w-[3rem] text-right"
+          style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+        >
+          {player.handicapAtTime || '\u2014'}
+        </span>
+        {teams.length > 0 && (
+          <select
+            value={player.teamId || ''}
+            onChange={(e) => movePlayer(player.id, e.target.value)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-20 h-7 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-gray-300"
+          >
+            <option value="">None</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          onClick={() => removePlayer(player.id)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
+        >
+          x
+        </button>
+      </div>
+    </div>
+  )
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -188,7 +280,7 @@ export default function PlayersSetupPage() {
               Add Players
             </h1>
             <p className="text-slate-600 dark:text-gray-400 text-sm" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-              Add players and assign them to teams
+              Add players by name and email — they'll receive an invitation to join
             </p>
           </div>
 
@@ -247,59 +339,7 @@ export default function PlayersSetupPage() {
                 {players
                   .filter((p) => !p.teamId)
                   .sort((a, b) => (a.handicapAtTime || 99) - (b.handicapAtTime || 99))
-                  .map((player) => (
-                    <div key={player.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 group">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-slate-900 dark:text-white truncate">{player.user.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-gray-400 truncate">{player.user.email}</div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-2">
-                        {player.role === 'ORGANIZER' && (
-                          <span className="text-xs bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-                            Org
-                          </span>
-                        )}
-                        <button
-                          onClick={() => toggleRole(player.id, player.role)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-amber-400 px-1"
-                          title={player.role === 'ORGANIZER' ? 'Remove organizer role' : 'Make organizer'}
-                        >
-                          {player.role === 'ORGANIZER' ? '−org' : '+org'}
-                        </button>
-                        {player.user.ghinNumber && (
-                          <span className="text-xs text-slate-400 dark:text-gray-500" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-                            #{player.user.ghinNumber}
-                          </span>
-                        )}
-                        <span
-                          className="text-emerald-600 dark:text-emerald-400 font-medium text-sm min-w-[3rem] text-right"
-                          style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
-                        >
-                          {player.handicapAtTime || '—'}
-                        </span>
-                        {teams.length > 0 && (
-                          <select
-                            value={player.teamId || ''}
-                            onChange={(e) => movePlayer(player.id, e.target.value)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity w-20 h-7 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-gray-300"
-                          >
-                            <option value="">None</option>
-                            {teams.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <button
-                          onClick={() => removePlayer(player.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
-                        >
-                          x
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  .map((player) => renderPlayerRow(player))}
               </div>
             </div>
           </div>
@@ -331,57 +371,7 @@ export default function PlayersSetupPage() {
                     <div className="space-y-2">
                       {teamPlayers
                         .sort((a, b) => (a.handicapAtTime || 99) - (b.handicapAtTime || 99))
-                        .map((player) => (
-                          <div key={player.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 group">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-slate-900 dark:text-white truncate">{player.user.name}</div>
-                              <div className="text-xs text-slate-500 dark:text-gray-400 truncate">{player.user.email}</div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-2">
-                              {player.role === 'ORGANIZER' && (
-                                <span className="text-xs bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-                                  Org
-                                </span>
-                              )}
-                              <button
-                                onClick={() => toggleRole(player.id, player.role)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-amber-400 px-1"
-                                title={player.role === 'ORGANIZER' ? 'Remove organizer role' : 'Make organizer'}
-                              >
-                                {player.role === 'ORGANIZER' ? '−org' : '+org'}
-                              </button>
-                              {player.user.ghinNumber && (
-                                <span className="text-xs text-slate-400 dark:text-gray-500" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
-                                  #{player.user.ghinNumber}
-                                </span>
-                              )}
-                              <span
-                                className="text-emerald-600 dark:text-emerald-400 font-medium text-sm min-w-[3rem] text-right"
-                                style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
-                              >
-                                {player.handicapAtTime || '—'}
-                              </span>
-                              <select
-                                value={player.teamId || ''}
-                                onChange={(e) => movePlayer(player.id, e.target.value)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity w-20 h-7 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-gray-300"
-                              >
-                                <option value="">None</option>
-                                {teams.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => removePlayer(player.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
-                              >
-                                x
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                        .map((player) => renderPlayerRow(player))}
                     </div>
                   )}
 

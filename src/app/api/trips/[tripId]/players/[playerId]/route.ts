@@ -34,13 +34,18 @@ export async function PUT(
       data: updateData,
       include: {
         user: {
-          select: { id: true, name: true, email: true, handicapIndex: true, ghinNumber: true },
+          select: { id: true, name: true, email: true, handicapIndex: true, ghinNumber: true, supabaseId: true },
         },
         team: { select: { id: true, name: true, color: true } },
       },
     })
 
-    return successResponse(tripPlayer)
+    const { supabaseId, ...userWithoutSupabaseId } = tripPlayer.user
+    return successResponse({
+      ...tripPlayer,
+      isPending: supabaseId.startsWith('pending-'),
+      user: userWithoutSupabaseId,
+    })
   } catch (error) {
     return handleApiError(error)
   }
