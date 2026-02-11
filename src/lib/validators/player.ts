@@ -11,6 +11,7 @@ export const addPlayerSchema = z.object({
 export const updatePlayerSchema = z.object({
   teamId: z.string().optional().nullable(),
   handicapIndex: z.number().min(-10).max(54).optional().nullable(),
+  role: z.enum(['ORGANIZER', 'PLAYER']).optional(),
 })
 
 export type AddPlayerInput = z.infer<typeof addPlayerSchema>

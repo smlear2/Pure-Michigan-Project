@@ -27,6 +27,7 @@ export async function PUT(
     const updateData: Record<string, unknown> = {}
     if (validated.teamId !== undefined) updateData.teamId = validated.teamId || null
     if (validated.handicapIndex !== undefined) updateData.handicapAtTime = validated.handicapIndex ?? 0
+    if (validated.role !== undefined) updateData.role = validated.role
 
     const tripPlayer = await prisma.tripPlayer.update({
       where: { id: params.playerId },

@@ -15,6 +15,7 @@ interface TripPlayer {
   id: string
   teamId: string | null
   handicapAtTime: number
+  role: 'ORGANIZER' | 'PLAYER'
   user: {
     id: string
     name: string
@@ -125,6 +126,23 @@ export default function PlayersSetupPage() {
       }
     } catch {
       setError('Failed to move player')
+    }
+  }
+
+  const toggleRole = async (playerId: string, currentRole: string) => {
+    const newRole = currentRole === 'ORGANIZER' ? 'PLAYER' : 'ORGANIZER'
+    try {
+      const res = await fetch(`/api/trips/${tripId}/players/${playerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setPlayers(players.map((p) => (p.id === playerId ? { ...p, role: newRole as 'ORGANIZER' | 'PLAYER' } : p)))
+      }
+    } catch {
+      setError('Failed to update role')
     }
   }
 
@@ -287,6 +305,18 @@ export default function PlayersSetupPage() {
                               <div className="text-xs text-slate-500 dark:text-gray-400 truncate">{player.user.email}</div>
                             </div>
                             <div className="flex items-center gap-2 ml-2">
+                              {player.role === 'ORGANIZER' && (
+                                <span className="text-xs bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+                                  Org
+                                </span>
+                              )}
+                              <button
+                                onClick={() => toggleRole(player.id, player.role)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-amber-400 px-1"
+                                title={player.role === 'ORGANIZER' ? 'Remove organizer role' : 'Make organizer'}
+                              >
+                                {player.role === 'ORGANIZER' ? '−org' : '+org'}
+                              </button>
                               {player.user.ghinNumber && (
                                 <span className="text-xs text-slate-400 dark:text-gray-500" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
                                   #{player.user.ghinNumber}
