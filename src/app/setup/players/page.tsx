@@ -246,20 +246,23 @@ export default function PlayersSetupPage() {
                   className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Team</label>
-                <select
-                  value={newPlayer.teamId}
-                  onChange={(e) => setNewPlayer((prev) => ({ ...prev, teamId: e.target.value }))}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 px-3 text-slate-900 dark:text-white text-sm"
-                >
-                  {teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {teams.length > 0 && (
+                <div>
+                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1">Team</label>
+                  <select
+                    value={newPlayer.teamId}
+                    onChange={(e) => setNewPlayer((prev) => ({ ...prev, teamId: e.target.value }))}
+                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 px-3 text-slate-900 dark:text-white text-sm"
+                  >
+                    <option value="">No team</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -273,7 +276,85 @@ export default function PlayersSetupPage() {
           </div>
         </div>
 
+        {/* Players list */}
+        {players.filter((p) => !p.teamId).length > 0 && (
+          <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-800/50 rounded-xl overflow-hidden mb-6">
+            <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/50">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                {teams.length > 0 ? 'Unassigned' : 'Players'}
+              </h3>
+              <span
+                className="text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded"
+                style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+              >
+                {players.filter((p) => !p.teamId).length} players
+              </span>
+            </div>
+            <div className="p-4">
+              <div className="space-y-2">
+                {players
+                  .filter((p) => !p.teamId)
+                  .sort((a, b) => (a.handicapAtTime || 99) - (b.handicapAtTime || 99))
+                  .map((player) => (
+                    <div key={player.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 group">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-slate-900 dark:text-white truncate">{player.user.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-gray-400 truncate">{player.user.email}</div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        {player.role === 'ORGANIZER' && (
+                          <span className="text-xs bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+                            Org
+                          </span>
+                        )}
+                        <button
+                          onClick={() => toggleRole(player.id, player.role)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-amber-400 px-1"
+                          title={player.role === 'ORGANIZER' ? 'Remove organizer role' : 'Make organizer'}
+                        >
+                          {player.role === 'ORGANIZER' ? '−org' : '+org'}
+                        </button>
+                        {player.user.ghinNumber && (
+                          <span className="text-xs text-slate-400 dark:text-gray-500" style={{ fontFamily: 'var(--font-dm-mono), monospace' }}>
+                            #{player.user.ghinNumber}
+                          </span>
+                        )}
+                        <span
+                          className="text-emerald-600 dark:text-emerald-400 font-medium text-sm min-w-[3rem] text-right"
+                          style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+                        >
+                          {player.handicapAtTime || '—'}
+                        </span>
+                        {teams.length > 0 && (
+                          <select
+                            value={player.teamId || ''}
+                            onChange={(e) => movePlayer(player.id, e.target.value)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity w-20 h-7 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-gray-300"
+                          >
+                            <option value="">None</option>
+                            {teams.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          onClick={() => removePlayer(player.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
+                        >
+                          x
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Teams with players */}
+        {teams.length > 0 && (
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           {teams.map((team) => {
             const teamPlayers = getTeamPlayers(team.id)
@@ -333,6 +414,7 @@ export default function PlayersSetupPage() {
                                 onChange={(e) => movePlayer(player.id, e.target.value)}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity w-20 h-7 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-gray-300"
                               >
+                                <option value="">None</option>
                                 {teams.map((t) => (
                                   <option key={t.id} value={t.id}>
                                     {t.name}
@@ -369,6 +451,7 @@ export default function PlayersSetupPage() {
             )
           })}
         </div>
+        )}
 
         {/* Summary and navigation */}
         <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-sm border border-slate-200 dark:border-slate-800/50 rounded-xl p-4">
