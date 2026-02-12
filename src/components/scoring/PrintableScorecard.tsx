@@ -95,7 +95,7 @@ export default function PrintableScorecard({
   // Cell styles
   const holeCell: React.CSSProperties = { border: bd, textAlign: 'center', fontSize: '10px', padding: '1px 1px', minWidth: '34px' }
   const totalCell: React.CSSProperties = { ...holeCell, fontWeight: 'bold' }
-  const scoreCell: React.CSSProperties = { ...holeCell, height: '22px', position: 'relative' as const }
+  const scoreCell: React.CSSProperties = { ...holeCell, height: '40px', position: 'relative' as const }
   const labelCell: React.CSSProperties = { border: bd, textAlign: 'left', fontSize: '10px', padding: '1px 6px', whiteSpace: 'nowrap', overflow: 'hidden' }
 
   // Tee-colored cell for TEES row
@@ -109,36 +109,33 @@ export default function PrintableScorecard({
 
   function renderPlayerRow(player: PlayerData, showStrokes: boolean, isFirst: boolean) {
     const strokes = getDisplayStrokes(player)
-    const nameFontSize = '12px'
-    const topBorder = bd
 
     return (
       <tr key={`player-${player.name}`}>
-        <td style={{ ...labelCell, fontSize: nameFontSize, fontWeight: 'bold', borderTop: topBorder }}>
-          {player.name}
+        <td colSpan={2} style={{ ...labelCell, fontSize: '12px', fontWeight: 'bold', borderRight: 'none' }}>
+          {player.name} <span style={{ fontSize: '9px', fontWeight: 'normal' }}>(HDCP {player.courseHandicap})</span>
         </td>
-        <td style={{ ...holeCell, fontSize: '10px', borderTop: topBorder }}>({player.courseHandicap})</td>
-        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderTop: topBorder }}>
+        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none' }}>
           {showStrokes ? strokes : ''}
         </td>
         {front9.map(h => (
-          <td key={h.number} style={{ ...scoreCell, borderTop: topBorder }}>
+          <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
               <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
             )}
           </td>
         ))}
-        <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
-        <td style={{ ...spacer, borderTop: topBorder }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={spacer}></td>
         {back9.map(h => (
-          <td key={h.number} style={{ ...scoreCell, borderTop: topBorder }}>
+          <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
               <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
             )}
           </td>
         ))}
-        <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
-        <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
       </tr>
     )
   }
@@ -146,19 +143,57 @@ export default function PrintableScorecard({
   function renderLabelRow(label: string, key: string, bold: boolean = true) {
     return (
       <tr key={key}>
-        <td colSpan={3} style={{ ...labelCell, fontWeight: bold ? 'bold' : 'normal', fontSize: '10px', textAlign: 'center' }}>
+        <td colSpan={2} style={{ ...labelCell, fontWeight: bold ? 'bold' : 'normal', fontSize: '10px', textAlign: 'center', borderRight: 'none' }}>
           {label}
         </td>
+        <td style={{ ...holeCell, borderLeft: 'none' }}></td>
         {front9.map(h => (
-          <td key={h.number} style={{ ...scoreCell }}></td>
+          <td key={h.number} style={scoreCell}></td>
         ))}
-        <td style={{ ...totalCell, height: '24px' }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
         <td style={spacer}></td>
         {back9.map(h => (
-          <td key={h.number} style={{ ...scoreCell }}></td>
+          <td key={h.number} style={scoreCell}></td>
         ))}
-        <td style={{ ...totalCell, height: '24px' }}></td>
-        <td style={{ ...totalCell, height: '24px' }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
+      </tr>
+    )
+  }
+
+  function renderTeamRow(sidePlayers: PlayerData[], sideKey: string) {
+    // Team formats: one combined row with both names, one set of score boxes
+    const first = sidePlayers[0]
+    const strokes = getDisplayStrokes(first)
+    const names = sidePlayers.map(p => p.name).join(' / ')
+    const hdcps = sidePlayers.map(p => `${p.courseHandicap}`).join('/')
+
+    return (
+      <tr key={`team-${sideKey}`}>
+        <td colSpan={2} style={{ ...labelCell, fontSize: '12px', fontWeight: 'bold', borderRight: 'none' }}>
+          {names} <span style={{ fontSize: '9px', fontWeight: 'normal' }}>(HDCP {hdcps})</span>
+        </td>
+        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none' }}>
+          {strokes}
+        </td>
+        {front9.map(h => (
+          <td key={h.number} style={scoreCell}>
+            {first.strokeHoles.includes(h.number) && (
+              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+            )}
+          </td>
+        ))}
+        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={spacer}></td>
+        {back9.map(h => (
+          <td key={h.number} style={scoreCell}>
+            {first.strokeHoles.includes(h.number) && (
+              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+            )}
+          </td>
+        ))}
+        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '40px' }}></td>
       </tr>
     )
   }
@@ -166,10 +201,15 @@ export default function PrintableScorecard({
   function renderSideRows(sidePlayers: PlayerData[], sideKey: string) {
     const rows: React.ReactNode[] = []
 
-    sidePlayers.forEach((player, idx) => {
-      const showStrokes = !isTeamFormat || idx === 0
-      rows.push(renderPlayerRow(player, showStrokes, idx === 0))
-    })
+    if (isTeamFormat) {
+      // One score row for the team
+      rows.push(renderTeamRow(sidePlayers, sideKey))
+    } else {
+      // Individual score row per player
+      sidePlayers.forEach((player, idx) => {
+        rows.push(renderPlayerRow(player, true, idx === 0))
+      })
+    }
 
     if (showBestBall) {
       rows.push(renderLabelRow('BEST BALL (NET)', `${sideKey}-bb`))
