@@ -153,7 +153,7 @@ export default function PrintScorecardsPage() {
           </Link>
           <span style={{ color: '#475569' }}>|</span>
           <span style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 600 }}>
-            {roundName} — Scorecards ({matches.length} matches)
+            {roundName} — Scorecards ({matches.length} matches, {matches.length * 2} pages)
           </span>
         </div>
         <button
@@ -173,10 +173,10 @@ export default function PrintScorecardsPage() {
         </button>
       </div>
 
-      {/* Scorecards */}
-      {scorecardData.map((card: any) => (
+      {/* Scorecards — two copies per match (one for each side) */}
+      {scorecardData.flatMap((card: any) => [1, 2].map(copy => (
         <PrintableScorecard
-          key={card.matchNumber}
+          key={`${card.matchNumber}-${copy}`}
           tournamentName={trip.name || 'Michigan Open'}
           year={trip.year}
           courseName={courseName}
@@ -194,7 +194,7 @@ export default function PrintScorecardsPage() {
           showBestBall={showBestBall}
           localRules={LOCAL_RULES}
         />
-      ))}
+      )))}
     </div>
   )
 }
