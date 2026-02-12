@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, requireOrganizer, requireTripMember } from '@/lib/auth'
 import { createMatchSchema } from '@/lib/validators/match'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
-import { courseHandicap, computeMatchHandicaps } from '@/lib/golf'
+import { courseHandicap, computeMatchHandicaps, skinsHandicap } from '@/lib/golf'
 import type { HandicapConfig } from '@/lib/golf'
 
 // GET /api/trips/[tripId]/rounds/[roundId]/matches
@@ -63,10 +63,10 @@ export async function POST(
     const body = await request.json()
     const validated = createMatchSchema.parse(body)
 
-    // Get the round with its tee (for slope rating)
+    // Get the round with its tee (for slope, rating, holes)
     const round = await prisma.round.findFirst({
       where: { id: params.roundId, tripId: params.tripId },
-      include: { tee: true },
+      include: { tee: { include: { holes: true } } },
     })
     if (!round) return errorResponse('Round not found', 'NOT_FOUND', 404)
 
@@ -86,21 +86,48 @@ export async function POST(
       select: { handicapConfig: true },
     })
 
+    const hdcpConfig = trip?.handicapConfig as HandicapConfig | null
+
     // Build handicap inputs with side info
-    const handicapInputs = validated.players.map(p => {
-      const tp = tripPlayers.find(t => t.id === p.tripPlayerId)!
-      return {
-        tripPlayerId: tp.id,
-        courseHdcp: courseHandicap(tp.handicapAtTime, round.tee.slope),
-        side: p.side,
+    let handicapInputs
+    let effectiveConfig: HandicapConfig | null
+
+    if (hdcpConfig?.useUnifiedFormula) {
+      // Unified formula: use skinsHandicap() as base (80% + rating-par already applied, capped)
+      // Then computeMatchHandicaps just does off-the-low + team combos
+      const par = round.tee.holes.reduce((sum: number, h: { par: number }) => sum + h.par, 0)
+      handicapInputs = validated.players.map(p => {
+        const tp = tripPlayers.find(t => t.id === p.tripPlayerId)!
+        return {
+          tripPlayerId: tp.id,
+          courseHdcp: skinsHandicap(tp.handicapAtTime, round.tee.slope, round.tee.rating, par, 20, 'round'),
+          side: p.side,
+        }
+      })
+      // Percentage=100 and no cap since skinsHandicap already handles both
+      effectiveConfig = {
+        ...hdcpConfig,
+        percentage: 100,
+        maxHandicap: null,
       }
-    })
+    } else {
+      // Legacy formula: courseHandicap + percentage + cap applied by computeMatchHandicaps
+      handicapInputs = validated.players.map(p => {
+        const tp = tripPlayers.find(t => t.id === p.tripPlayerId)!
+        return {
+          tripPlayerId: tp.id,
+          courseHdcp: courseHandicap(tp.handicapAtTime, round.tee.slope),
+          side: p.side,
+        }
+      })
+      effectiveConfig = hdcpConfig
+    }
 
     // Compute format-aware playing handicaps
     const handicapResults = computeMatchHandicaps(
       handicapInputs,
       round.format,
-      trip?.handicapConfig as HandicapConfig | null,
+      effectiveConfig,
     )
 
     // Create match with match players in a transaction

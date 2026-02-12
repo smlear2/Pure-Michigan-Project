@@ -20,6 +20,7 @@ export interface HandicapConfig {
   percentage: number           // 0-100, applied to all players' course handicaps
   offTheLow: boolean           // subtract lowest from all (standard match play)
   maxHandicap?: number | null  // Cap adjusted handicap at this value (e.g., 20)
+  useUnifiedFormula?: boolean  // When true, use skins formula for both match play and skins
   teamCombos?: {
     [format: string]: TeamCombo
   }
@@ -116,6 +117,46 @@ export function receivesStroke(playingHdcp: number, holeStrokeIndex: number): bo
 export function receivesDoubleStroke(playingHdcp: number, holeStrokeIndex: number): boolean {
   if (playingHdcp <= 18) return false
   return (playingHdcp - 18) >= holeStrokeIndex
+}
+
+// --- Skins handicap ---
+
+/**
+ * Calculate skins handicap from handicap index and course data.
+ * Formula: min(maxHdcp, max(0, CEIL((index × slope/113 + (rating - par)) × 0.8)))
+ *
+ * This is DIFFERENT from match-play handicap:
+ * - Uses CEIL rounding (not ROUND)
+ * - Applies 0.8 multiplier in one step (before rounding, not after)
+ * - Includes USGA (rating - par) adjustment
+ * - NOT off the low
+ */
+export function skinsHandicap(
+  index: number,
+  slope: number,
+  rating: number,
+  par: number,
+  maxHdcp: number = 20,
+  rounding: 'ceil' | 'round' = 'ceil',
+): number {
+  const raw = (index * slope / 113 + (rating - par)) * 0.8
+  const rounded = rounding === 'ceil' ? Math.ceil(raw) : Math.round(raw)
+  return Math.min(maxHdcp, Math.max(0, rounded))
+}
+
+/**
+ * Calculate combined team skins handicap from individual skins handicaps.
+ * Uses the same ROUND(low*lowPct/100 + high*highPct/100) as match-play teams.
+ */
+export function teamSkinsHandicap(
+  individualHdcps: number[],
+  lowPct: number,
+  highPct: number,
+): number {
+  const sorted = [...individualHdcps].sort((a, b) => a - b)
+  if (sorted.length === 0) return 0
+  if (sorted.length === 1) return Math.round(sorted[0] * lowPct / 100)
+  return Math.round(sorted[0] * lowPct / 100 + sorted[1] * highPct / 100)
 }
 
 // --- Configurable handicap functions ---

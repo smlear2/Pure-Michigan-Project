@@ -8,6 +8,8 @@ import {
   adjustedHandicap,
   teamHandicap,
   computeMatchHandicaps,
+  skinsHandicap,
+  teamSkinsHandicap,
   HoleInfo,
   HandicapConfig,
 } from '../handicap'
@@ -370,5 +372,80 @@ describe('computeMatchHandicaps', () => {
       // adj: ceil(3.2)=4, ceil(21.6)=22. Off the low: 0, 18
       expect(results.find(r => r.tripPlayerId === 'b')!.playingHandicap).toBe(18)
     })
+  })
+})
+
+// ===== Skins handicap tests =====
+
+describe('skinsHandicap', () => {
+  it('R4 Donald Ross: Stephen Lear idx=8.5 → 8', () => {
+    // slope=136, rating=71.1, par=72
+    // ceil((8.5 * 136/113 + (71.1 - 72)) * 0.8) = ceil((10.212 - 0.9) * 0.8) = ceil(7.450) = 8
+    expect(skinsHandicap(8.5, 136, 71.1, 72)).toBe(8)
+  })
+
+  it('R6 Arthur Hills: Stephen Lear idx=8.5 → 6', () => {
+    // slope=132, rating=70.3, par=73
+    // ceil((8.5 * 132/113 + (70.3 - 73)) * 0.8) = ceil((9.925 - 2.7) * 0.8) = ceil(5.780) = 6
+    expect(skinsHandicap(8.5, 132, 70.3, 73)).toBe(6)
+  })
+
+  it('R4 all 16 players match expected values', () => {
+    // R4 Donald Ross: slope=136, rating=71.1, par=72
+    const s = 136, r = 71.1, p = 72
+    expect(skinsHandicap(8.5, s, r, p)).toBe(8)   // Stephen Lear
+    expect(skinsHandicap(3.5, s, r, p)).toBe(3)   // Joey Aiello
+    expect(skinsHandicap(6.9, s, r, p)).toBe(6)   // Danny Morales
+    expect(skinsHandicap(3.7, s, r, p)).toBe(3)   // Dave Meyer
+    expect(skinsHandicap(9.7, s, r, p)).toBe(9)   // Alex Paxton
+    expect(skinsHandicap(9.8, s, r, p)).toBe(9)   // Dylan Plachta
+    expect(skinsHandicap(19.9, s, r, p)).toBe(19)  // Joe Spencer
+    expect(skinsHandicap(21.0, s, r, p)).toBe(20)  // Ryan Hubona (capped)
+    expect(skinsHandicap(11.7, s, r, p)).toBe(11)  // Tom Bostwick
+    expect(skinsHandicap(4.6, s, r, p)).toBe(4)   // Ben Hammel
+    expect(skinsHandicap(5.8, s, r, p)).toBe(5)   // Zach Lear
+    expect(skinsHandicap(4.9, s, r, p)).toBe(4)   // Joe Ways
+    expect(skinsHandicap(9.5, s, r, p)).toBe(9)   // Maxwell Huntley
+    expect(skinsHandicap(12.8, s, r, p)).toBe(12)  // Eric Barkovich
+    expect(skinsHandicap(17.7, s, r, p)).toBe(17)  // Kip Owen
+    expect(skinsHandicap(21.6, s, r, p)).toBe(20)  // Zack Stitt (capped)
+  })
+
+  it('caps at maxHdcp (default 20)', () => {
+    expect(skinsHandicap(30, 136, 71.1, 72)).toBe(20)
+  })
+
+  it('floors at 0 for low index on tough course', () => {
+    // Very low index on a course where rating << par
+    expect(skinsHandicap(0, 100, 65, 72)).toBe(0)
+  })
+
+  it('handles scratch golfer', () => {
+    // index=0, rating=72, par=72 → ceil(0 * 0.8) = 0
+    expect(skinsHandicap(0, 113, 72, 72)).toBe(0)
+  })
+})
+
+describe('teamSkinsHandicap', () => {
+  it('foursomes 60/40 split', () => {
+    // low=6, high=9 → round(6*0.6 + 9*0.4) = round(3.6 + 3.6) = round(7.2) = 7
+    expect(teamSkinsHandicap([6, 9], 60, 40)).toBe(7)
+  })
+
+  it('scramble 35/15 split', () => {
+    // low=6, high=9 → round(6*0.35 + 9*0.15) = round(2.1 + 1.35) = round(3.45) = 3
+    expect(teamSkinsHandicap([6, 9], 35, 15)).toBe(3)
+  })
+
+  it('sorts regardless of input order', () => {
+    expect(teamSkinsHandicap([9, 6], 60, 40)).toBe(teamSkinsHandicap([6, 9], 60, 40))
+  })
+
+  it('handles single player', () => {
+    expect(teamSkinsHandicap([10], 60, 40)).toBe(6) // round(10*0.6) = 6
+  })
+
+  it('handles empty array', () => {
+    expect(teamSkinsHandicap([], 60, 40)).toBe(0)
   })
 })

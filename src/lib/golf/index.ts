@@ -12,6 +12,8 @@ export {
   teamHandicap,
   computeMatchHandicaps,
   isTeamFormat,
+  skinsHandicap,
+  teamSkinsHandicap,
   DEFAULT_HANDICAP_CONFIG,
 } from './handicap'
 export type {

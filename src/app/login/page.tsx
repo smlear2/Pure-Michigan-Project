@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-type Mode = 'signin' | 'signup'
+type Mode = 'signin' | 'signup' | 'forgot'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -25,6 +25,20 @@ export default function LoginPage() {
     setError('')
     setMessage('')
     setLoading(true)
+
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
+
+      if (error) {
+        setError(error.message)
+      } else {
+        setMessage('Check your email for a password reset link.')
+      }
+      setLoading(false)
+      return
+    }
 
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({
@@ -76,7 +90,7 @@ export default function LoginPage() {
             className="text-emerald-600 dark:text-emerald-400 text-sm tracking-wider uppercase"
             style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
           >
-            {mode === 'signin' ? 'Sign in to continue' : 'Create your account'}
+            {mode === 'forgot' ? 'Reset your password' : mode === 'signin' ? 'Sign in to continue' : 'Create your account'}
           </p>
         </div>
 
@@ -118,23 +132,25 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
-              >
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
+            {mode !== 'forgot' && (
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
             {error && (
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -154,13 +170,25 @@ export default function LoginPage() {
             >
               {loading
                 ? 'Loading...'
-                : mode === 'signin'
-                  ? 'Sign In'
-                  : 'Sign Up'}
+                : mode === 'forgot'
+                  ? 'Send Reset Link'
+                  : mode === 'signin'
+                    ? 'Sign In'
+                    : 'Sign Up'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
+            {mode === 'signin' && (
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(''); setMessage('') }}
+                className="block w-full text-sm text-slate-500 dark:text-slate-400 hover:underline"
+                style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+              >
+                Forgot password?
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -171,9 +199,11 @@ export default function LoginPage() {
               className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
               style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
             >
-              {mode === 'signin'
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
+              {mode === 'forgot'
+                ? 'Back to sign in'
+                : mode === 'signin'
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Sign in'}
             </button>
           </div>
         </div>
