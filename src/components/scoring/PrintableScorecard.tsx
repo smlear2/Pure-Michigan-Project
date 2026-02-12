@@ -268,7 +268,7 @@ export default function PrintableScorecard({
           {/* HOLE numbers row */}
           <tr>
             <td style={{ ...labelCell, background: 'white', fontWeight: 'bold', borderRight: 'none', borderBottom: 'none', ...pca }}>{'Format: '}{formatLabel}</td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none', borderBottom: 'none', borderTop: 'none' }}>HOLE</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none', borderBottom: 'none' }}>HOLE</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.number}</td>
             ))}
@@ -284,7 +284,7 @@ export default function PrintableScorecard({
           {/* DISTANCE row — tee color on yardage cells */}
           <tr>
             <td style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none', borderTop: 'none', borderBottom: 'none' }}>{formatDesc}</td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none', borderBottom: 'none', borderTop: 'none' }}>{teeName}</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none', borderTop: 'none', borderBottom: 'none' }}>{teeName}</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
@@ -300,7 +300,7 @@ export default function PrintableScorecard({
           {/* PAR row */}
           <tr>
             <td style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none', borderTop: 'none', borderBottom: 'none' }}></td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none', borderBottom: 'none', borderTop: 'none' }}>PAR</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none', borderTop: 'none', borderBottom: 'none' }}>PAR</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.par}</td>
             ))}
