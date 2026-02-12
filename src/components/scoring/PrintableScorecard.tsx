@@ -1,5 +1,4 @@
-import { strokeAllocation, receivesDoubleStroke } from '@/lib/golf'
-import type { HoleInfo } from '@/lib/golf'
+import { receivesDoubleStroke } from '@/lib/golf'
 
 interface HoleData {
   number: number
@@ -21,6 +20,8 @@ interface PrintableScorecardProps {
   courseName: string
   teeName: string
   teeColor: string
+  teeRating: number
+  teeSlope: number
   roundName: string
   date: string | null
   format: string
@@ -29,12 +30,15 @@ interface PrintableScorecardProps {
   holes: HoleData[]
   players: PlayerData[]
   showBestBall: boolean
+  localRules?: string
 }
 
 export default function PrintableScorecard({
   courseName,
   teeName,
   teeColor,
+  teeRating,
+  teeSlope,
   roundName,
   date,
   format,
@@ -43,6 +47,7 @@ export default function PrintableScorecard({
   holes,
   players,
   showBestBall,
+  localRules,
 }: PrintableScorecardProps) {
   const front9 = holes.filter(h => h.number <= 9)
   const back9 = holes.filter(h => h.number > 9)
@@ -51,6 +56,9 @@ export default function PrintableScorecard({
 
   const formatLabel = format.replace(/_/g, ' ')
   const dateStr = date ? new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''
+
+  const side1Names = side1Players.map(p => p.name).join(' / ')
+  const side2Names = side2Players.map(p => p.name).join(' / ')
 
   function renderNine(nineHoles: HoleData[], label: string) {
     const totalPar = nineHoles.reduce((s, h) => s + h.par, 0)
@@ -99,7 +107,7 @@ export default function PrintableScorecard({
           </tr>
           {/* Stroke Index */}
           <tr>
-            <td style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', color: '#666' }}>SI</td>
+            <td style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', color: '#666' }}>Hdcp</td>
             {nineHoles.map(h => (
               <td key={h.number} style={{ padding: '2px 4px', border: '1px solid #999', fontSize: '9px', color: '#666', textAlign: 'center' }}>
                 {h.handicap}
@@ -125,7 +133,7 @@ export default function PrintableScorecard({
                 const hasDouble = receivesDoubleStroke(player.playingHandicap, h.handicap)
                 return (
                   <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '26px', minWidth: '30px', position: 'relative', textAlign: 'center', fontSize: '9px' }}>
-                    {hasDouble ? '●●' : hasStroke ? '●' : ''}
+                    {hasDouble ? '**' : hasStroke ? '*' : ''}
                   </td>
                 )
               })}
@@ -133,11 +141,11 @@ export default function PrintableScorecard({
             </tr>
           ))}
 
-          {/* Best ball row for side 1 */}
+          {/* Best ball net row for side 1 */}
           {showBestBall && (
             <tr>
               <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontStyle: 'italic', color: '#666' }}>
-                Best Ball
+                Best Ball Net
               </td>
               {nineHoles.map(h => (
                 <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
@@ -167,7 +175,7 @@ export default function PrintableScorecard({
                 const hasDouble = receivesDoubleStroke(player.playingHandicap, h.handicap)
                 return (
                   <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '26px', minWidth: '30px', position: 'relative', textAlign: 'center', fontSize: '9px' }}>
-                    {hasDouble ? '●●' : hasStroke ? '●' : ''}
+                    {hasDouble ? '**' : hasStroke ? '*' : ''}
                   </td>
                 )
               })}
@@ -175,11 +183,11 @@ export default function PrintableScorecard({
             </tr>
           ))}
 
-          {/* Best ball row for side 2 */}
+          {/* Best ball net row for side 2 */}
           {showBestBall && (
             <tr>
               <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontStyle: 'italic', color: '#666' }}>
-                Best Ball
+                Best Ball Net
               </td>
               {nineHoles.map(h => (
                 <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
@@ -192,6 +200,17 @@ export default function PrintableScorecard({
           <tr>
             <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontWeight: 'bold' }}>
               Match
+            </td>
+            {nineHoles.map(h => (
+              <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
+            ))}
+            <td style={{ border: '1px solid #999', height: '22px' }}></td>
+          </tr>
+
+          {/* +/- row */}
+          <tr>
+            <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontWeight: 'bold' }}>
+              +/&minus;
             </td>
             {nineHoles.map(h => (
               <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
@@ -221,7 +240,7 @@ export default function PrintableScorecard({
         <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0' }}>Match {matchNumber}</p>
           <p style={{ fontSize: '10px', margin: '0', color: '#444' }}>
-            {roundName}{dateStr ? ` — ${dateStr}` : ''}
+            {roundName}{dateStr ? ` \u2014 ${dateStr}` : ''}
           </p>
         </div>
       </div>
@@ -232,45 +251,27 @@ export default function PrintableScorecard({
       {/* Back 9 */}
       {back9.length > 0 && renderNine(back9, 'IN')}
 
-      {/* Totals summary */}
-      <table style={{ borderCollapse: 'collapse', width: 'auto', marginTop: '4px' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', width: '120px', background: '#eee', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
-              TOTAL
-            </th>
-            <th style={{ padding: '2px 8px', border: '1px solid #999', fontSize: '9px', minWidth: '40px', background: '#eee', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>OUT</th>
-            <th style={{ padding: '2px 8px', border: '1px solid #999', fontSize: '9px', minWidth: '40px', background: '#eee', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>IN</th>
-            <th style={{ padding: '2px 8px', border: '1px solid #999', fontSize: '9px', minWidth: '40px', background: '#eee', fontWeight: 'bold', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>TOT</th>
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((player, idx) => (
-            <tr key={idx}>
-              <td style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', whiteSpace: 'nowrap' }}>
-                <span style={{
-                  display: 'inline-block', width: '6px', height: '6px', borderRadius: '1px',
-                  backgroundColor: player.teamColor, marginRight: '3px', verticalAlign: 'middle',
-                  WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
-                } as React.CSSProperties} />
-                {player.name}
-              </td>
-              <td style={{ border: '1px solid #999', height: '22px', minWidth: '40px' }}></td>
-              <td style={{ border: '1px solid #999', height: '22px', minWidth: '40px' }}></td>
-              <td style={{ border: '1px solid #999', height: '22px', minWidth: '40px' }}></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Footer */}
-      <div style={{ marginTop: '8px', fontSize: '9px', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-        <span>● = stroke received &nbsp; ●● = double stroke</span>
-        <span>
-          {maxScore ? `Max score: par + ${maxScore}` : ''}
-          {maxScore ? ' · ' : ''}
-          Result: _______________
-        </span>
+      {/* Bottom info section */}
+      <div style={{ marginTop: '8px', border: '1px solid #999', padding: '6px 8px', fontSize: '9px', color: '#333' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+          <span><strong>Format:</strong> {formatLabel}</span>
+          <span><strong>Tees:</strong> {teeName} ({teeRating}/{teeSlope})</span>
+        </div>
+        <div style={{ marginBottom: '3px' }}>
+          <strong>Match {matchNumber}:</strong> {side1Names} vs {side2Names}
+        </div>
+        <div style={{ marginBottom: '3px' }}>
+          * = stroke received &nbsp;&nbsp; ** = double stroke
+          {maxScore ? <span> &nbsp;&nbsp; Max score: par + {maxScore}</span> : null}
+        </div>
+        {localRules && (
+          <div style={{ marginBottom: '3px' }}>
+            <strong>Local Rules:</strong> {localRules}
+          </div>
+        )}
+        <div style={{ marginTop: '4px', borderTop: '1px solid #ccc', paddingTop: '4px' }}>
+          <strong>Result:</strong> _______________________________________________
+        </div>
       </div>
     </div>
   )

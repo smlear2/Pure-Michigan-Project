@@ -72,9 +72,12 @@ export default function PrintScorecardsPage() {
   const courseName = round.tee.course.name
   const teeName = round.tee.name || 'Default'
   const teeColor = round.tee.color || '#666'
+  const teeRating = round.tee.rating ?? 0
+  const teeSlope = round.tee.slope ?? 0
   const roundName = round.name || `Round ${round.roundNumber}`
   const format = round.format
   const showBestBall = format === 'FOURBALL' || format === 'SHAMBLE'
+  const localRules = 'Lift, clean, & place (fairways only)'
 
   const scorecardData = matches.map((match: any) => {
     const players = match.players.map((p: any) => {
@@ -135,22 +138,42 @@ export default function PrintScorecardsPage() {
         </button>
       </div>
 
-      {/* Scorecards */}
+      {/* Scorecards — two copies per match (one for each side) */}
       {scorecardData.map((card: any) => (
-        <PrintableScorecard
-          key={card.matchNumber}
-          courseName={courseName}
-          teeName={teeName}
-          teeColor={teeColor}
-          roundName={roundName}
-          date={round.date}
-          format={format}
-          matchNumber={card.matchNumber}
-          maxScore={card.maxScore}
-          holes={card.holes}
-          players={card.players}
-          showBestBall={showBestBall}
-        />
+        <div key={card.matchNumber}>
+          <PrintableScorecard
+            courseName={courseName}
+            teeName={teeName}
+            teeColor={teeColor}
+            teeRating={teeRating}
+            teeSlope={teeSlope}
+            roundName={roundName}
+            date={round.date}
+            format={format}
+            matchNumber={card.matchNumber}
+            maxScore={card.maxScore}
+            holes={card.holes}
+            players={card.players}
+            showBestBall={showBestBall}
+            localRules={localRules}
+          />
+          <PrintableScorecard
+            courseName={courseName}
+            teeName={teeName}
+            teeColor={teeColor}
+            teeRating={teeRating}
+            teeSlope={teeSlope}
+            roundName={roundName}
+            date={round.date}
+            format={format}
+            matchNumber={card.matchNumber}
+            maxScore={card.maxScore}
+            holes={card.holes}
+            players={card.players}
+            showBestBall={showBestBall}
+            localRules={localRules}
+          />
+        </div>
       ))}
     </div>
   )
