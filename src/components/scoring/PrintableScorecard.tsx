@@ -52,22 +52,17 @@ const FORMAT_DESCRIPTIONS: Record<string, string> = {
   SINGLES: '(Match Play)',
 }
 
-// Shared cell style constants
-const borderStyle = '1px solid #999'
-const headerBg = { background: '#222', color: 'white', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties
-const cellBase = { border: borderStyle, textAlign: 'center' as const, fontSize: '9px', padding: '2px 3px' }
-const holeCellStyle = { ...cellBase, minWidth: '28px' }
-const totalCellStyle = { ...cellBase, minWidth: '32px', fontWeight: 'bold' as const }
-const spacerStyle = { width: '4px', border: 'none', padding: 0 }
-const labelStyle = { ...cellBase, textAlign: 'left' as const, padding: '2px 4px', fontSize: '9px', whiteSpace: 'nowrap' as const, overflow: 'hidden' as const }
-const scoreCellStyle = { ...holeCellStyle, height: '26px' }
-const emptyCellStyle = { ...holeCellStyle, height: '22px' }
+// Print color helper
+const pca = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties
+const bd = '1px solid #000'
+const spacer = { width: '6px', border: 'none', padding: 0, background: 'white', ...pca } as React.CSSProperties
 
 export default function PrintableScorecard({
   tournamentName,
   year,
   courseName,
   teeName,
+  teeColor,
   teeRating,
   teeSlope,
   roundName,
@@ -92,84 +87,74 @@ export default function PrintableScorecard({
   const frontYards = front9.reduce((s, h) => s + h.yardage, 0)
   const backYards = back9.reduce((s, h) => s + h.yardage, 0)
   const totalYards = frontYards + backYards
+  const totalCols = 3 + front9.length + 1 + 1 + back9.length + 2
 
   const formatLabel = FORMAT_LABELS[format] || format
   const formatDesc = FORMAT_DESCRIPTIONS[format] || ''
 
-  // Compute strokes for display
-  // Individual formats: courseHandicap off-the-low (full strokes, no percentage)
-  // Team formats: playingHandicap (already has combo + off-the-low)
+  // Cell styles
+  const holeCell: React.CSSProperties = { border: bd, textAlign: 'center', fontSize: '10px', padding: '2px 1px', minWidth: '28px' }
+  const totalCell: React.CSSProperties = { ...holeCell, minWidth: '34px', fontWeight: 'bold' }
+  const scoreCell: React.CSSProperties = { ...holeCell, height: '24px' }
+  const labelCell: React.CSSProperties = { border: bd, textAlign: 'left', fontSize: '10px', padding: '2px 6px', whiteSpace: 'nowrap', overflow: 'hidden' }
+
+  // Tee-colored cell for TEES row
+  const teeCell: React.CSSProperties = { ...holeCell, background: teeColor, color: 'white', fontSize: '8px', ...pca }
+
   function getDisplayStrokes(player: PlayerData): number {
-    if (isTeamFormat) {
-      return player.playingHandicap
-    }
+    if (isTeamFormat) return player.playingHandicap
     const minCourseHcp = Math.min(...players.map(p => p.courseHandicap))
     return Math.max(0, player.courseHandicap - minCourseHcp)
   }
 
-  function renderPlayerRow(player: PlayerData, showStrokes: boolean) {
+  function renderPlayerRow(player: PlayerData, showStrokes: boolean, isFirst: boolean) {
     const strokes = getDisplayStrokes(player)
+    const nameFontSize = '12px'
+    const topBorder = isFirst ? '2px solid #000' : bd
+
     return (
       <tr key={`player-${player.name}`}>
-        <td style={{ ...labelStyle, width: '130px' }}>{player.name}</td>
-        <td style={{ ...cellBase, fontSize: '9px', width: '30px' }}>({player.courseHandicap})</td>
-        <td style={{ ...cellBase, fontSize: '9px', width: '22px' }}>
-          {showStrokes && strokes > 0 ? strokes : showStrokes ? 0 : ''}
+        <td style={{ ...labelCell, fontSize: nameFontSize, fontWeight: 'bold', borderTop: topBorder }}>
+          {player.name}
+        </td>
+        <td style={{ ...holeCell, fontSize: '10px', borderTop: topBorder }}>({player.courseHandicap})</td>
+        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderTop: topBorder }}>
+          {showStrokes ? strokes : ''}
         </td>
         {front9.map(h => (
-          <td key={h.number} style={scoreCellStyle}>
+          <td key={h.number} style={{ ...scoreCell, borderTop: topBorder }}>
             {showStrokes && player.strokeHoles.includes(h.number) ? '*' : ''}
           </td>
         ))}
-        <td style={{ ...totalCellStyle, height: '26px' }}></td>
-        <td style={spacerStyle}></td>
+        <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
+        <td style={{ ...spacer, borderTop: topBorder }}></td>
         {back9.map(h => (
-          <td key={h.number} style={scoreCellStyle}>
+          <td key={h.number} style={{ ...scoreCell, borderTop: topBorder }}>
             {showStrokes && player.strokeHoles.includes(h.number) ? '*' : ''}
           </td>
         ))}
-        <td style={{ ...totalCellStyle, height: '26px' }}></td>
-        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+        <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
+        <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
       </tr>
     )
   }
 
-  function renderBlankRow(key: string) {
+  function renderLabelRow(label: string, key: string, bold: boolean = true) {
     return (
       <tr key={key}>
-        <td style={{ ...labelStyle, width: '130px' }}></td>
-        <td style={cellBase}></td>
-        <td style={cellBase}></td>
+        <td colSpan={3} style={{ ...labelCell, fontWeight: bold ? 'bold' : 'normal', fontSize: '10px', textAlign: 'center' }}>
+          {label}
+        </td>
         {front9.map(h => (
-          <td key={h.number} style={scoreCellStyle}></td>
+          <td key={h.number} style={{ ...scoreCell }}></td>
         ))}
-        <td style={{ ...totalCellStyle, height: '26px' }}></td>
-        <td style={spacerStyle}></td>
+        <td style={{ ...totalCell, height: '24px' }}></td>
+        <td style={spacer}></td>
         {back9.map(h => (
-          <td key={h.number} style={scoreCellStyle}></td>
+          <td key={h.number} style={{ ...scoreCell }}></td>
         ))}
-        <td style={{ ...totalCellStyle, height: '26px' }}></td>
-        <td style={{ ...totalCellStyle, height: '26px' }}></td>
-      </tr>
-    )
-  }
-
-  function renderLabelRow(label: string, key: string) {
-    return (
-      <tr key={key}>
-        <td style={labelStyle}>{label}</td>
-        <td style={cellBase}></td>
-        <td style={cellBase}></td>
-        {front9.map(h => (
-          <td key={h.number} style={emptyCellStyle}></td>
-        ))}
-        <td style={{ ...totalCellStyle, height: '22px' }}></td>
-        <td style={spacerStyle}></td>
-        {back9.map(h => (
-          <td key={h.number} style={emptyCellStyle}></td>
-        ))}
-        <td style={{ ...totalCellStyle, height: '22px' }}></td>
-        <td style={{ ...totalCellStyle, height: '22px' }}></td>
+        <td style={{ ...totalCell, height: '24px' }}></td>
+        <td style={{ ...totalCell, height: '24px' }}></td>
       </tr>
     )
   }
@@ -178,16 +163,14 @@ export default function PrintableScorecard({
     const rows: React.ReactNode[] = []
 
     sidePlayers.forEach((player, idx) => {
-      // For team formats, only show strokes/marks on the FIRST player
       const showStrokes = !isTeamFormat || idx === 0
-      rows.push(renderPlayerRow(player, showStrokes))
+      rows.push(renderPlayerRow(player, showStrokes, idx === 0))
     })
 
-    // Best ball net and +/- rows
     if (showBestBall) {
       rows.push(renderLabelRow('BEST BALL (NET)', `${sideKey}-bb`))
     }
-    rows.push(renderLabelRow('+/\u2212', `${sideKey}-pm`))
+    rows.push(renderLabelRow('+/-', `${sideKey}-pm`))
 
     return rows
   }
@@ -195,141 +178,146 @@ export default function PrintableScorecard({
   const dateStr = date ? new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
   return (
-    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '10px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '10px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
       {/* Scorecard Grid */}
       <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: '130px' }} />
-          <col style={{ width: '30px' }} />
+          <col style={{ width: '120px' }} />
+          <col style={{ width: '28px' }} />
           <col style={{ width: '22px' }} />
-          {front9.map(h => <col key={`f${h.number}`} style={{ width: '28px' }} />)}
-          <col style={{ width: '32px' }} />
-          <col style={{ width: '4px' }} />
-          {back9.map(h => <col key={`b${h.number}`} style={{ width: '28px' }} />)}
-          <col style={{ width: '32px' }} />
-          <col style={{ width: '36px' }} />
+          {front9.map(h => <col key={`f${h.number}`} />)}
+          <col style={{ width: '34px' }} />
+          <col style={{ width: '6px' }} />
+          {back9.map(h => <col key={`b${h.number}`} />)}
+          <col style={{ width: '34px' }} />
+          <col style={{ width: '40px' }} />
         </colgroup>
         <thead>
-          {/* Title row */}
+          {/* Title row — bright green bar */}
           <tr>
-            <td colSpan={3 + front9.length + 1 + 1 + back9.length + 1 + 1} style={{ fontSize: '12px', fontWeight: 'bold', padding: '4px', border: 'none' }}>
-              {tournamentName} - {year} - Round {roundNumber} - {courseName}
+            <td colSpan={totalCols} style={{
+              background: '#00CC00', color: 'black', fontSize: '13px', fontWeight: 'bold',
+              padding: '5px 8px', textAlign: 'center', border: '2px solid #000', ...pca,
+            }}>
+              {tournamentName.toUpperCase()} - {year} - Round {roundNumber} - {courseName}
             </td>
           </tr>
 
-          {/* FRONT / BACK labels */}
+          {/* FRONT / BACK (or nine names like LINKS / QUARRY) */}
           <tr>
-            <td colSpan={3} style={{ border: 'none' }}></td>
-            <td colSpan={front9.length + 1} style={{ ...headerBg, border: borderStyle, textAlign: 'center', fontSize: '10px', fontWeight: 'bold', padding: '2px' }}>
+            <td colSpan={3} style={{ border: 'none', background: 'white' }}></td>
+            <td colSpan={front9.length + 1} style={{
+              textAlign: 'center', fontSize: '11px', fontWeight: 'bold',
+              padding: '2px', border: 'none', background: 'white',
+            }}>
               FRONT
             </td>
-            <td style={spacerStyle}></td>
-            <td colSpan={back9.length + 1 + 1} style={{ ...headerBg, border: borderStyle, textAlign: 'center', fontSize: '10px', fontWeight: 'bold', padding: '2px' }}>
+            <td style={{ ...spacer, border: 'none' }}></td>
+            <td colSpan={back9.length + 2} style={{
+              textAlign: 'center', fontSize: '11px', fontWeight: 'bold',
+              padding: '2px', border: 'none', background: 'white',
+            }}>
               BACK
             </td>
           </tr>
 
-          {/* HOLE numbers */}
+          {/* HOLE numbers row — white background, black borders */}
           <tr>
-            <td style={{ ...labelStyle, ...headerBg, border: borderStyle }}></td>
-            <td colSpan={2} style={{ ...cellBase, ...headerBg, border: borderStyle, fontSize: '9px', fontWeight: 'bold' }}>HOLE</td>
+            <td style={{ ...labelCell, background: 'white', ...pca }}></td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', background: 'white', ...pca }}>HOLE</td>
             {front9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, ...headerBg, border: borderStyle, fontWeight: 'bold' }}>{h.number}</td>
+              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.number}</td>
             ))}
-            <td style={{ ...totalCellStyle, ...headerBg, border: borderStyle }}>OUT</td>
-            <td style={spacerStyle}></td>
+            <td style={{ ...totalCell }}>OUT</td>
+            <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, ...headerBg, border: borderStyle, fontWeight: 'bold' }}>{h.number}</td>
+              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.number}</td>
             ))}
-            <td style={{ ...totalCellStyle, ...headerBg, border: borderStyle }}>IN</td>
-            <td style={{ ...totalCellStyle, ...headerBg, border: borderStyle }}>TOTAL</td>
+            <td style={{ ...totalCell }}>IN</td>
+            <td style={{ ...totalCell }}>TOTAL</td>
           </tr>
 
-          {/* TEES row */}
+          {/* TEES row — tee color background */}
           <tr>
-            <td style={{ ...labelStyle, fontSize: '9px' }}>{formatLabel}</td>
-            <td colSpan={2} style={{ ...cellBase, fontSize: '9px', fontWeight: 'bold' }}>TEES</td>
+            <td style={{ ...labelCell, fontSize: '10px', fontWeight: 'bold' }}>{formatLabel}</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>TEES</td>
             {front9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '7px', color: '#666' }}>{teeName}</td>
+              <td key={h.number} style={teeCell}>{teeName}</td>
             ))}
-            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
-            <td style={spacerStyle}></td>
+            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}></td>
+            <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '7px', color: '#666' }}>{teeName}</td>
+              <td key={h.number} style={teeCell}>{teeName}</td>
             ))}
-            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
-            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}></td>
+            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}></td>
           </tr>
 
           {/* DISTANCE row */}
           <tr>
-            <td style={labelStyle}></td>
-            <td colSpan={2} style={{ ...cellBase, fontSize: '9px', color: '#666' }}>DISTANCE</td>
+            <td style={labelCell}></td>
+            <td colSpan={2} style={{ ...holeCell, fontSize: '9px' }}>DISTANCE</td>
             {front9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.yardage}</td>
+              <td key={h.number} style={{ ...holeCell, fontSize: '9px' }}>{h.yardage}</td>
             ))}
-            <td style={{ ...totalCellStyle, fontSize: '8px', color: '#666' }}>{frontYards}</td>
-            <td style={spacerStyle}></td>
+            <td style={{ ...totalCell, fontSize: '9px' }}>{frontYards}</td>
+            <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.yardage}</td>
+              <td key={h.number} style={{ ...holeCell, fontSize: '9px' }}>{h.yardage}</td>
             ))}
-            <td style={{ ...totalCellStyle, fontSize: '8px', color: '#666' }}>{backYards}</td>
-            <td style={{ ...totalCellStyle, fontSize: '8px', color: '#666' }}>{totalYards}</td>
+            <td style={{ ...totalCell, fontSize: '9px' }}>{backYards}</td>
+            <td style={{ ...totalCell, fontSize: '9px' }}>{totalYards}</td>
           </tr>
 
           {/* PAR row */}
-          <tr className="par-row">
-            <td style={{ ...labelStyle, fontSize: '8px', color: '#666' }}>{formatDesc}</td>
-            <td colSpan={2} style={{ ...cellBase, fontSize: '10px', fontWeight: 'bold' }}>PAR</td>
+          <tr>
+            <td style={{ ...labelCell, fontSize: '9px' }}>{formatDesc}</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>PAR</td>
             {front9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '10px', fontWeight: 'bold' }}>{h.par}</td>
+              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.par}</td>
             ))}
-            <td style={{ ...totalCellStyle, fontSize: '10px' }}>{frontPar}</td>
-            <td style={spacerStyle}></td>
+            <td style={totalCell}>{frontPar}</td>
+            <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '10px', fontWeight: 'bold' }}>{h.par}</td>
+              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.par}</td>
             ))}
-            <td style={{ ...totalCellStyle, fontSize: '10px' }}>{backPar}</td>
-            <td style={{ ...totalCellStyle, fontSize: '10px' }}>{totalPar}</td>
+            <td style={totalCell}>{backPar}</td>
+            <td style={totalCell}>{totalPar}</td>
           </tr>
 
           {/* HDCP row */}
           <tr>
-            <td style={labelStyle}></td>
-            <td colSpan={2} style={{ ...cellBase, fontSize: '9px', color: '#666' }}>HDCP</td>
+            <td style={labelCell}></td>
+            <td colSpan={2} style={{ ...holeCell, fontSize: '9px' }}>HDCP</td>
             {front9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.handicap}</td>
+              <td key={h.number} style={{ ...holeCell, fontSize: '9px' }}>{h.handicap}</td>
             ))}
-            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
-            <td style={spacerStyle}></td>
+            <td style={{ ...totalCell, border: bd }}></td>
+            <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.handicap}</td>
+              <td key={h.number} style={{ ...holeCell, fontSize: '9px' }}>{h.handicap}</td>
             ))}
-            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
-            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+            <td style={{ ...totalCell, border: bd }}></td>
+            <td style={{ ...totalCell, border: bd }}></td>
           </tr>
         </thead>
 
         <tbody>
-          {/* Side 1 */}
           {renderSideRows(side1, 's1')}
-
-          {/* Side 2 */}
           {renderSideRows(side2, 's2')}
         </tbody>
       </table>
 
       {/* Info Section */}
-      <div style={{ marginTop: '12px', fontSize: '10px', lineHeight: '1.6' }}>
+      <div style={{ marginTop: '14px', fontSize: '10px', lineHeight: '1.6' }}>
         <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '4px' }}>
-          {tournamentName} - {year} - Round {roundNumber} - {courseName} - Par {totalPar}
+          {tournamentName.toUpperCase()} - {year} - Round {roundNumber} - {courseName} - Par {totalPar}
         </div>
 
         <div style={{ marginBottom: '2px' }}>
           Game {matchNumber}{dateStr ? ` \u2014 ${dateStr}` : ''}
         </div>
 
-        {/* Team lineups */}
         <div style={{ marginBottom: '2px' }}>
           {side1[0]?.teamName || 'Side 1'} - {side1.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}
         </div>
@@ -353,7 +341,7 @@ export default function PrintableScorecard({
         </table>
 
         {localRules && (
-          <div style={{ marginTop: '6px', fontSize: '9px', color: '#444', whiteSpace: 'pre-line' }}>
+          <div style={{ marginTop: '6px', fontSize: '9px', color: '#333', whiteSpace: 'pre-line' }}>
             <span style={{ fontWeight: 'bold' }}>Other Rules:</span>
             {'\n'}{localRules}
           </div>
