@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
+  const next = searchParams.get('next')
   const origin = getOrigin(request)
 
   if (!code) {
@@ -68,7 +69,9 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/`)
+  // Redirect to `next` if provided and is a safe relative path
+  const redirectPath = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+  return NextResponse.redirect(`${origin}${redirectPath}`)
 }
 
 function getOrigin(request: Request): string {

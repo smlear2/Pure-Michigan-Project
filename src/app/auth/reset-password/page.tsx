@@ -17,14 +17,15 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // Supabase sets the session from the URL hash automatically
-    // Wait for the auth state to be ready
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    // After PKCE code exchange in /auth/callback, the session is already set.
+    // Check for an active session to show the password form.
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
         setReady(true)
+      } else {
+        setError('Reset link is invalid or has expired. Please request a new one.')
       }
     })
-    return () => subscription.unsubscribe()
   }, [supabase.auth])
 
   async function handleSubmit(e: React.FormEvent) {
