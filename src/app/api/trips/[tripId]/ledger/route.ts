@@ -16,7 +16,7 @@ export async function GET(
     const member = await requireTripMember(params.tripId, auth.dbUser.id)
     if (!member) return errorResponse('Not a trip member', 'FORBIDDEN', 403)
 
-    // Load trip players
+    // Load trip players with opt-in flags
     const tripPlayers = await prisma.tripPlayer.findMany({
       where: { tripId: params.tripId, isActive: true },
       include: {
@@ -24,6 +24,10 @@ export async function GET(
         team: { select: { name: true, color: true } },
       },
     })
+
+    // Build opt-in sets for filtering
+    const skinsOptedIn = new Set(tripPlayers.filter(tp => tp.skinsOptIn).map(tp => tp.id))
+    const tiltOptedIn = new Set(tripPlayers.filter(tp => tp.tiltOptIn).map(tp => tp.id))
 
     // Load skins-enabled rounds
     const skinsRounds = await prisma.round.findMany({
@@ -75,10 +79,11 @@ export async function GET(
       const uniquePlayers = new Set<string>()
 
       for (const score of roundScores) {
+        const tpId = score.matchPlayer.tripPlayerId
+        if (!skinsOptedIn.has(tpId)) continue
         const holeId = score.holeId
         if (!holeScoresMap.has(holeId)) holeScoresMap.set(holeId, new Map())
         const holeMap = holeScoresMap.get(holeId)!
-        const tpId = score.matchPlayer.tripPlayerId
         uniquePlayers.add(tpId)
         if (!holeMap.has(tpId)) holeMap.set(tpId, score.netScore)
       }
@@ -163,10 +168,11 @@ export async function GET(
       const uniqueTiltPlayers = new Set<string>()
 
       for (const score of roundScores) {
+        const tpId = score.matchPlayer.tripPlayerId
+        if (!tiltOptedIn.has(tpId)) continue
         const holeId = score.holeId
         if (!holeScoresMap.has(holeId)) holeScoresMap.set(holeId, new Map())
         const holeMap = holeScoresMap.get(holeId)!
-        const tpId = score.matchPlayer.tripPlayerId
         uniqueTiltPlayers.add(tpId)
         if (!holeMap.has(tpId)) {
           holeMap.set(tpId, { netScore: score.netScore, par: score.hole.par })

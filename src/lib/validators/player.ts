@@ -12,6 +12,8 @@ export const updatePlayerSchema = z.object({
   teamId: z.string().optional().nullable(),
   handicapIndex: z.number().min(-10).max(54).optional().nullable(),
   role: z.enum(['ORGANIZER', 'PLAYER']).optional(),
+  skinsOptIn: z.boolean().optional(),
+  tiltOptIn: z.boolean().optional(),
 })
 
 export type AddPlayerInput = z.infer<typeof addPlayerSchema>

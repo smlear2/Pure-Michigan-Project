@@ -28,6 +28,8 @@ export async function PUT(
     if (validated.teamId !== undefined) updateData.teamId = validated.teamId || null
     if (validated.handicapIndex !== undefined) updateData.handicapAtTime = validated.handicapIndex ?? 0
     if (validated.role !== undefined) updateData.role = validated.role
+    if (validated.skinsOptIn !== undefined) updateData.skinsOptIn = validated.skinsOptIn
+    if (validated.tiltOptIn !== undefined) updateData.tiltOptIn = validated.tiltOptIn
 
     const tripPlayer = await prisma.tripPlayer.update({
       where: { id: params.playerId },

@@ -25,6 +25,10 @@ export async function GET(
       },
     })
 
+    // Build opt-in sets for filtering
+    const skinsOptedIn = new Set(tripPlayers.filter(tp => tp.skinsOptIn).map(tp => tp.id))
+    const tiltOptedIn = new Set(tripPlayers.filter(tp => tp.tiltOptIn).map(tp => tp.id))
+
     // --- 1. Payment Schedule Balance ---
     const paymentItems = await prisma.paymentItem.findMany({
       where: { tripId: params.tripId },
@@ -114,9 +118,10 @@ export async function GET(
       const uniquePlayers = new Set<string>()
 
       for (const score of roundScores) {
+        const tpId = score.matchPlayer.tripPlayerId
+        if (!skinsOptedIn.has(tpId)) continue
         if (!holeScoresMap.has(score.holeId)) holeScoresMap.set(score.holeId, new Map())
         const holeMap = holeScoresMap.get(score.holeId)!
-        const tpId = score.matchPlayer.tripPlayerId
         uniquePlayers.add(tpId)
         if (!holeMap.has(tpId)) holeMap.set(tpId, score.netScore)
       }
@@ -184,9 +189,10 @@ export async function GET(
       const uniqueTiltPlayers = new Set<string>()
 
       for (const score of roundScores) {
+        const tpId = score.matchPlayer.tripPlayerId
+        if (!tiltOptedIn.has(tpId)) continue
         if (!holeScoresMap.has(score.holeId)) holeScoresMap.set(score.holeId, new Map())
         const holeMap = holeScoresMap.get(score.holeId)!
-        const tpId = score.matchPlayer.tripPlayerId
         uniqueTiltPlayers.add(tpId)
         if (!holeMap.has(tpId)) {
           holeMap.set(tpId, { netScore: score.netScore, par: score.hole.par })

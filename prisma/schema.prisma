@@ -121,6 +121,8 @@ model TripPlayer {
   handicapAtTime  Float                          // Snapshot — syncs with User.handicapIndex until freeze date, then locks
   isActive        Boolean      @default(true)
   canVerifyScores Boolean      @default(false)   // Can approve/verify scores post-round (organizer always can)
+  skinsOptIn      Boolean      @default(true)    // Player participates in skins wager
+  tiltOptIn       Boolean      @default(true)    // Player participates in TILT wager
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

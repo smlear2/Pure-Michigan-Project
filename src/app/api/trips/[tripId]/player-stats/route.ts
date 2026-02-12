@@ -157,6 +157,9 @@ export async function GET(
       }
     }
 
+    // Build skins opt-in set
+    const skinsOptedIn = new Set(tripPlayers.filter(tp => tp.skinsOptIn).map(tp => tp.id))
+
     // Skins aggregation — compute per round
     const skinsRounds = await prisma.round.findMany({
       where: { tripId: params.tripId, skinsEnabled: true },
@@ -199,10 +202,11 @@ export async function GET(
       const uniquePlayers = new Set<string>()
 
       for (const score of roundScores) {
+        const tpId = score.matchPlayer.tripPlayerId
+        if (!skinsOptedIn.has(tpId)) continue
         const holeId = score.holeId
         if (!holeScoresMap.has(holeId)) holeScoresMap.set(holeId, new Map())
         const holeMap = holeScoresMap.get(holeId)!
-        const tpId = score.matchPlayer.tripPlayerId
         uniquePlayers.add(tpId)
         if (!holeMap.has(tpId)) holeMap.set(tpId, score.netScore)
       }

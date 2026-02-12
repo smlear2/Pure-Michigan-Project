@@ -53,6 +53,7 @@ export async function GET(
             tripPlayerId: true,
             tripPlayer: {
               select: {
+                tiltOptIn: true,
                 user: { select: { name: true } },
                 team: { select: { name: true, color: true } },
               },
@@ -67,6 +68,7 @@ export async function GET(
     const holeScoresMap = new Map<string, Map<string, { netScore: number; par: number }>>()
 
     for (const score of scores) {
+      if (!score.matchPlayer.tripPlayer.tiltOptIn) continue
       const holeId = score.holeId
       if (!holeScoresMap.has(holeId)) {
         holeScoresMap.set(holeId, new Map())
@@ -94,9 +96,10 @@ export async function GET(
       }
     })
 
-    // Count unique players
+    // Count unique opted-in players
     const uniquePlayers = new Set<string>()
     for (const score of scores) {
+      if (!score.matchPlayer.tripPlayer.tiltOptIn) continue
       uniquePlayers.add(score.matchPlayer.tripPlayerId)
     }
 

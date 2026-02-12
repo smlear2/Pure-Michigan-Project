@@ -76,6 +76,7 @@ export async function GET(
             tripPlayer: {
               select: {
                 handicapAtTime: true,
+                skinsOptIn: true,
                 user: { select: { name: true } },
                 team: { select: { name: true, color: true } },
               },
@@ -93,6 +94,7 @@ export async function GET(
     const rounding = hdcpConfig?.useUnifiedFormula ? 'round' as const : 'ceil' as const
 
     for (const score of scores) {
+      if (!score.matchPlayer.tripPlayer.skinsOptIn) continue
       const tpId = score.matchPlayer.tripPlayerId
       uniquePlayers.add(tpId)
       if (!playerSkinsHdcps.has(tpId)) {
@@ -108,8 +110,9 @@ export async function GET(
     if (teamFormat) {
       const combo = teamCombos[round.format]
       if (combo) {
-        // Group players by match+side to find teams
+        // Group opted-in players by match+side to find teams
         for (const score of scores) {
+          if (!score.matchPlayer.tripPlayer.skinsOptIn) continue
           const teamKey = `${score.matchPlayer.matchId}:${score.matchPlayer.side}`
           const tpId = score.matchPlayer.tripPlayerId
 
@@ -124,8 +127,9 @@ export async function GET(
           teamSkinsHdcpMap.set(teamKey, teamSkinsHandicap(hdcps, combo.lowPct, combo.highPct))
         })
       } else {
-        // Team format without combo config — just track members
+        // Team format without combo config — just track opted-in members
         for (const score of scores) {
+          if (!score.matchPlayer.tripPlayer.skinsOptIn) continue
           const teamKey = `${score.matchPlayer.matchId}:${score.matchPlayer.side}`
           const tpId = score.matchPlayer.tripPlayerId
           if (!teamMembersMap.has(teamKey)) teamMembersMap.set(teamKey, [])
@@ -139,6 +143,7 @@ export async function GET(
     const holeScoresMap = new Map<string, Map<string, number>>()
 
     for (const score of scores) {
+      if (!score.matchPlayer.tripPlayer.skinsOptIn) continue
       const hole = holes.find(h => h.id === score.holeId)
       if (!hole) continue
 
