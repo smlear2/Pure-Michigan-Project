@@ -1,4 +1,5 @@
-import { receivesDoubleStroke } from '@/lib/golf'
+import { strokeAllocation } from '@/lib/golf'
+import type { HoleInfo } from '@/lib/golf'
 
 interface HoleData {
   number: number
@@ -12,38 +13,68 @@ interface PlayerData {
   teamName: string
   teamColor: string
   side: number
+  courseHandicap: number
   playingHandicap: number
-  strokeHoles: number[]
+  handicapIndex: number
+  strokeHoles: number[] // holes where this player gets a *
 }
 
 interface PrintableScorecardProps {
+  tournamentName: string
+  year: number
   courseName: string
   teeName: string
   teeColor: string
   teeRating: number
   teeSlope: number
   roundName: string
+  roundNumber: number
   date: string | null
   format: string
   matchNumber: number
-  maxScore: number | null
   holes: HoleData[]
   players: PlayerData[]
   showBestBall: boolean
   localRules?: string
 }
 
+const FORMAT_LABELS: Record<string, string> = {
+  FOURBALL: 'Fourball',
+  FOURSOMES: 'Foursomes',
+  SCRAMBLE: '2-Man Scramble',
+  SINGLES: 'Singles',
+}
+
+const FORMAT_DESCRIPTIONS: Record<string, string> = {
+  FOURBALL: '(Best of 2)',
+  FOURSOMES: '(Mod. Alternate Shot)',
+  SCRAMBLE: '(Scramble)',
+  SINGLES: '(Match Play)',
+}
+
+// Shared cell style constants
+const borderStyle = '1px solid #999'
+const headerBg = { background: '#222', color: 'white', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties
+const cellBase = { border: borderStyle, textAlign: 'center' as const, fontSize: '9px', padding: '2px 3px' }
+const holeCellStyle = { ...cellBase, minWidth: '28px' }
+const totalCellStyle = { ...cellBase, minWidth: '32px', fontWeight: 'bold' as const }
+const spacerStyle = { width: '4px', border: 'none', padding: 0 }
+const labelStyle = { ...cellBase, textAlign: 'left' as const, padding: '2px 4px', fontSize: '9px', whiteSpace: 'nowrap' as const, overflow: 'hidden' as const }
+const scoreCellStyle = { ...holeCellStyle, height: '26px' }
+const emptyCellStyle = { ...holeCellStyle, height: '22px' }
+
 export default function PrintableScorecard({
+  tournamentName,
+  year,
   courseName,
   teeName,
-  teeColor,
   teeRating,
   teeSlope,
   roundName,
+  roundNumber,
   date,
   format,
   matchNumber,
-  maxScore,
   holes,
   players,
   showBestBall,
@@ -51,227 +82,282 @@ export default function PrintableScorecard({
 }: PrintableScorecardProps) {
   const front9 = holes.filter(h => h.number <= 9)
   const back9 = holes.filter(h => h.number > 9)
-  const side1Players = players.filter(p => p.side === 1)
-  const side2Players = players.filter(p => p.side === 2)
+  const side1 = players.filter(p => p.side === 1)
+  const side2 = players.filter(p => p.side === 2)
+  const isTeamFormat = format === 'FOURSOMES' || format === 'SCRAMBLE'
 
-  const formatLabel = format.replace(/_/g, ' ')
-  const dateStr = date ? new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''
+  const frontPar = front9.reduce((s, h) => s + h.par, 0)
+  const backPar = back9.reduce((s, h) => s + h.par, 0)
+  const totalPar = frontPar + backPar
+  const frontYards = front9.reduce((s, h) => s + h.yardage, 0)
+  const backYards = back9.reduce((s, h) => s + h.yardage, 0)
+  const totalYards = frontYards + backYards
 
-  const side1Names = side1Players.map(p => p.name).join(' / ')
-  const side2Names = side2Players.map(p => p.name).join(' / ')
+  const formatLabel = FORMAT_LABELS[format] || format
+  const formatDesc = FORMAT_DESCRIPTIONS[format] || ''
 
-  function renderNine(nineHoles: HoleData[], label: string) {
-    const totalPar = nineHoles.reduce((s, h) => s + h.par, 0)
-    const totalYards = nineHoles.reduce((s, h) => s + h.yardage, 0)
+  // Compute strokes for display
+  // Individual formats: courseHandicap off-the-low (full strokes, no percentage)
+  // Team formats: playingHandicap (already has combo + off-the-low)
+  function getDisplayStrokes(player: PlayerData): number {
+    if (isTeamFormat) {
+      return player.playingHandicap
+    }
+    const minCourseHcp = Math.min(...players.map(p => p.courseHandicap))
+    return Math.max(0, player.courseHandicap - minCourseHcp)
+  }
 
+  function renderPlayerRow(player: PlayerData, showStrokes: boolean) {
+    const strokes = getDisplayStrokes(player)
     return (
-      <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: '4px' }}>
-        <thead>
-          {/* Hole numbers */}
-          <tr className="header-row">
-            <th className="label-cell" style={{ background: '#222', color: 'white', textAlign: 'left', padding: '3px 6px', border: '1px solid #333', width: '120px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
-              {label}
-            </th>
-            {nineHoles.map(h => (
-              <th key={h.number} style={{ background: '#222', color: 'white', padding: '3px 4px', border: '1px solid #333', fontSize: '11px', fontWeight: 'bold', minWidth: '30px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
-                {h.number}
-              </th>
-            ))}
-            <th style={{ background: '#222', color: 'white', padding: '3px 6px', border: '1px solid #333', fontSize: '11px', fontWeight: 'bold', minWidth: '36px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}>
-              TOT
-            </th>
-          </tr>
-          {/* Yardage */}
-          <tr>
-            <td style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', color: '#666' }}>Yards</td>
-            {nineHoles.map(h => (
-              <td key={h.number} style={{ padding: '2px 4px', border: '1px solid #999', fontSize: '9px', color: '#666', textAlign: 'center' }}>
-                {h.yardage}
-              </td>
-            ))}
-            <td style={{ padding: '2px 4px', border: '1px solid #999', fontSize: '9px', color: '#666', textAlign: 'center', fontWeight: 'bold' }}>
-              {totalYards}
-            </td>
-          </tr>
-          {/* Par */}
-          <tr className="par-row">
-            <td style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '10px', fontWeight: 'bold' }}>Par</td>
-            {nineHoles.map(h => (
-              <td key={h.number} style={{ padding: '2px 4px', border: '1px solid #999', fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>
-                {h.par}
-              </td>
-            ))}
-            <td style={{ padding: '2px 4px', border: '1px solid #999', fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>
-              {totalPar}
-            </td>
-          </tr>
-          {/* Stroke Index */}
-          <tr>
-            <td style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', color: '#666' }}>Hdcp</td>
-            {nineHoles.map(h => (
-              <td key={h.number} style={{ padding: '2px 4px', border: '1px solid #999', fontSize: '9px', color: '#666', textAlign: 'center' }}>
-                {h.handicap}
-              </td>
-            ))}
-            <td style={{ border: '1px solid #999' }}></td>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Side 1 players */}
-          {side1Players.map((player, idx) => (
-            <tr key={`s1-${idx}`}>
-              <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                <span style={{
-                  display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px',
-                  backgroundColor: player.teamColor, marginRight: '4px', verticalAlign: 'middle',
-                  WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
-                } as React.CSSProperties} />
-                {player.name} ({player.playingHandicap})
-              </td>
-              {nineHoles.map(h => {
-                const hasStroke = player.strokeHoles.includes(h.number)
-                const hasDouble = receivesDoubleStroke(player.playingHandicap, h.handicap)
-                return (
-                  <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '26px', minWidth: '30px', position: 'relative', textAlign: 'center', fontSize: '9px' }}>
-                    {hasDouble ? '**' : hasStroke ? '*' : ''}
-                  </td>
-                )
-              })}
-              <td style={{ border: '1px solid #999', height: '26px', minWidth: '36px' }}></td>
-            </tr>
-          ))}
-
-          {/* Best ball net row for side 1 */}
-          {showBestBall && (
-            <tr>
-              <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontStyle: 'italic', color: '#666' }}>
-                Best Ball Net
-              </td>
-              {nineHoles.map(h => (
-                <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
-              ))}
-              <td style={{ border: '1px solid #999', height: '22px' }}></td>
-            </tr>
-          )}
-
-          {/* Separator between sides */}
-          <tr className="separator-row">
-            <td colSpan={nineHoles.length + 2} style={{ borderTop: '2.5px solid #000', height: '0', padding: '0', border: '1px solid #999' }}></td>
-          </tr>
-
-          {/* Side 2 players */}
-          {side2Players.map((player, idx) => (
-            <tr key={`s2-${idx}`}>
-              <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                <span style={{
-                  display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px',
-                  backgroundColor: player.teamColor, marginRight: '4px', verticalAlign: 'middle',
-                  WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
-                } as React.CSSProperties} />
-                {player.name} ({player.playingHandicap})
-              </td>
-              {nineHoles.map(h => {
-                const hasStroke = player.strokeHoles.includes(h.number)
-                const hasDouble = receivesDoubleStroke(player.playingHandicap, h.handicap)
-                return (
-                  <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '26px', minWidth: '30px', position: 'relative', textAlign: 'center', fontSize: '9px' }}>
-                    {hasDouble ? '**' : hasStroke ? '*' : ''}
-                  </td>
-                )
-              })}
-              <td style={{ border: '1px solid #999', height: '26px', minWidth: '36px' }}></td>
-            </tr>
-          ))}
-
-          {/* Best ball net row for side 2 */}
-          {showBestBall && (
-            <tr>
-              <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontStyle: 'italic', color: '#666' }}>
-                Best Ball Net
-              </td>
-              {nineHoles.map(h => (
-                <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
-              ))}
-              <td style={{ border: '1px solid #999', height: '22px' }}></td>
-            </tr>
-          )}
-
-          {/* Match row */}
-          <tr>
-            <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontWeight: 'bold' }}>
-              Match
-            </td>
-            {nineHoles.map(h => (
-              <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
-            ))}
-            <td style={{ border: '1px solid #999', height: '22px' }}></td>
-          </tr>
-
-          {/* +/- row */}
-          <tr>
-            <td className="label-cell" style={{ textAlign: 'left', padding: '2px 6px', border: '1px solid #999', fontSize: '9px', fontWeight: 'bold' }}>
-              +/&minus;
-            </td>
-            {nineHoles.map(h => (
-              <td key={h.number} className="score-cell" style={{ border: '1px solid #999', height: '22px' }}></td>
-            ))}
-            <td style={{ border: '1px solid #999', height: '22px' }}></td>
-          </tr>
-        </tbody>
-      </table>
+      <tr key={`player-${player.name}`}>
+        <td style={{ ...labelStyle, width: '130px' }}>{player.name}</td>
+        <td style={{ ...cellBase, fontSize: '9px', width: '30px' }}>({player.courseHandicap})</td>
+        <td style={{ ...cellBase, fontSize: '9px', width: '22px' }}>
+          {showStrokes && strokes > 0 ? strokes : showStrokes ? 0 : ''}
+        </td>
+        {front9.map(h => (
+          <td key={h.number} style={scoreCellStyle}>
+            {showStrokes && player.strokeHoles.includes(h.number) ? '*' : ''}
+          </td>
+        ))}
+        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+        <td style={spacerStyle}></td>
+        {back9.map(h => (
+          <td key={h.number} style={scoreCellStyle}>
+            {showStrokes && player.strokeHoles.includes(h.number) ? '*' : ''}
+          </td>
+        ))}
+        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+      </tr>
     )
   }
 
+  function renderBlankRow(key: string) {
+    return (
+      <tr key={key}>
+        <td style={{ ...labelStyle, width: '130px' }}></td>
+        <td style={cellBase}></td>
+        <td style={cellBase}></td>
+        {front9.map(h => (
+          <td key={h.number} style={scoreCellStyle}></td>
+        ))}
+        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+        <td style={spacerStyle}></td>
+        {back9.map(h => (
+          <td key={h.number} style={scoreCellStyle}></td>
+        ))}
+        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+        <td style={{ ...totalCellStyle, height: '26px' }}></td>
+      </tr>
+    )
+  }
+
+  function renderLabelRow(label: string, key: string) {
+    return (
+      <tr key={key}>
+        <td style={labelStyle}>{label}</td>
+        <td style={cellBase}></td>
+        <td style={cellBase}></td>
+        {front9.map(h => (
+          <td key={h.number} style={emptyCellStyle}></td>
+        ))}
+        <td style={{ ...totalCellStyle, height: '22px' }}></td>
+        <td style={spacerStyle}></td>
+        {back9.map(h => (
+          <td key={h.number} style={emptyCellStyle}></td>
+        ))}
+        <td style={{ ...totalCellStyle, height: '22px' }}></td>
+        <td style={{ ...totalCellStyle, height: '22px' }}></td>
+      </tr>
+    )
+  }
+
+  function renderSideRows(sidePlayers: PlayerData[], sideKey: string) {
+    const rows: React.ReactNode[] = []
+
+    sidePlayers.forEach((player, idx) => {
+      // For team formats, only show strokes/marks on the FIRST player
+      const showStrokes = !isTeamFormat || idx === 0
+      rows.push(renderPlayerRow(player, showStrokes))
+    })
+
+    // Best ball net and +/- rows
+    if (showBestBall) {
+      rows.push(renderLabelRow('BEST BALL (NET)', `${sideKey}-bb`))
+    }
+    rows.push(renderLabelRow('+/\u2212', `${sideKey}-pm`))
+
+    return rows
+  }
+
+  const dateStr = date ? new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''
+
   return (
-    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '12px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', borderBottom: '2px solid #000', paddingBottom: '6px' }}>
-        <div>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 2px 0' }}>{courseName}</h2>
-          <p style={{ fontSize: '11px', margin: '0', color: '#444' }}>
-            <span style={{
-              display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%',
-              backgroundColor: teeColor, marginRight: '4px', verticalAlign: 'middle',
-              WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
-            } as React.CSSProperties} />
-            {teeName} Tees &bull; {formatLabel}
-          </p>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0' }}>Match {matchNumber}</p>
-          <p style={{ fontSize: '10px', margin: '0', color: '#444' }}>
-            {roundName}{dateStr ? ` \u2014 ${dateStr}` : ''}
-          </p>
-        </div>
-      </div>
+    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '10px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Scorecard Grid */}
+      <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '130px' }} />
+          <col style={{ width: '30px' }} />
+          <col style={{ width: '22px' }} />
+          {front9.map(h => <col key={`f${h.number}`} style={{ width: '28px' }} />)}
+          <col style={{ width: '32px' }} />
+          <col style={{ width: '4px' }} />
+          {back9.map(h => <col key={`b${h.number}`} style={{ width: '28px' }} />)}
+          <col style={{ width: '32px' }} />
+          <col style={{ width: '36px' }} />
+        </colgroup>
+        <thead>
+          {/* Title row */}
+          <tr>
+            <td colSpan={3 + front9.length + 1 + 1 + back9.length + 1 + 1} style={{ fontSize: '12px', fontWeight: 'bold', padding: '4px', border: 'none' }}>
+              {tournamentName} - {year} - Round {roundNumber} - {courseName}
+            </td>
+          </tr>
 
-      {/* Front 9 */}
-      {renderNine(front9, 'OUT')}
+          {/* FRONT / BACK labels */}
+          <tr>
+            <td colSpan={3} style={{ border: 'none' }}></td>
+            <td colSpan={front9.length + 1} style={{ ...headerBg, border: borderStyle, textAlign: 'center', fontSize: '10px', fontWeight: 'bold', padding: '2px' }}>
+              FRONT
+            </td>
+            <td style={spacerStyle}></td>
+            <td colSpan={back9.length + 1 + 1} style={{ ...headerBg, border: borderStyle, textAlign: 'center', fontSize: '10px', fontWeight: 'bold', padding: '2px' }}>
+              BACK
+            </td>
+          </tr>
 
-      {/* Back 9 */}
-      {back9.length > 0 && renderNine(back9, 'IN')}
+          {/* HOLE numbers */}
+          <tr>
+            <td style={{ ...labelStyle, ...headerBg, border: borderStyle }}></td>
+            <td colSpan={2} style={{ ...cellBase, ...headerBg, border: borderStyle, fontSize: '9px', fontWeight: 'bold' }}>HOLE</td>
+            {front9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, ...headerBg, border: borderStyle, fontWeight: 'bold' }}>{h.number}</td>
+            ))}
+            <td style={{ ...totalCellStyle, ...headerBg, border: borderStyle }}>OUT</td>
+            <td style={spacerStyle}></td>
+            {back9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, ...headerBg, border: borderStyle, fontWeight: 'bold' }}>{h.number}</td>
+            ))}
+            <td style={{ ...totalCellStyle, ...headerBg, border: borderStyle }}>IN</td>
+            <td style={{ ...totalCellStyle, ...headerBg, border: borderStyle }}>TOTAL</td>
+          </tr>
 
-      {/* Bottom info section */}
-      <div style={{ marginTop: '8px', border: '1px solid #999', padding: '6px 8px', fontSize: '9px', color: '#333' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-          <span><strong>Format:</strong> {formatLabel}</span>
-          <span><strong>Tees:</strong> {teeName} ({teeRating}/{teeSlope})</span>
+          {/* TEES row */}
+          <tr>
+            <td style={{ ...labelStyle, fontSize: '9px' }}>{formatLabel}</td>
+            <td colSpan={2} style={{ ...cellBase, fontSize: '9px', fontWeight: 'bold' }}>TEES</td>
+            {front9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '7px', color: '#666' }}>{teeName}</td>
+            ))}
+            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+            <td style={spacerStyle}></td>
+            {back9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '7px', color: '#666' }}>{teeName}</td>
+            ))}
+            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+          </tr>
+
+          {/* DISTANCE row */}
+          <tr>
+            <td style={labelStyle}></td>
+            <td colSpan={2} style={{ ...cellBase, fontSize: '9px', color: '#666' }}>DISTANCE</td>
+            {front9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.yardage}</td>
+            ))}
+            <td style={{ ...totalCellStyle, fontSize: '8px', color: '#666' }}>{frontYards}</td>
+            <td style={spacerStyle}></td>
+            {back9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.yardage}</td>
+            ))}
+            <td style={{ ...totalCellStyle, fontSize: '8px', color: '#666' }}>{backYards}</td>
+            <td style={{ ...totalCellStyle, fontSize: '8px', color: '#666' }}>{totalYards}</td>
+          </tr>
+
+          {/* PAR row */}
+          <tr className="par-row">
+            <td style={{ ...labelStyle, fontSize: '8px', color: '#666' }}>{formatDesc}</td>
+            <td colSpan={2} style={{ ...cellBase, fontSize: '10px', fontWeight: 'bold' }}>PAR</td>
+            {front9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '10px', fontWeight: 'bold' }}>{h.par}</td>
+            ))}
+            <td style={{ ...totalCellStyle, fontSize: '10px' }}>{frontPar}</td>
+            <td style={spacerStyle}></td>
+            {back9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '10px', fontWeight: 'bold' }}>{h.par}</td>
+            ))}
+            <td style={{ ...totalCellStyle, fontSize: '10px' }}>{backPar}</td>
+            <td style={{ ...totalCellStyle, fontSize: '10px' }}>{totalPar}</td>
+          </tr>
+
+          {/* HDCP row */}
+          <tr>
+            <td style={labelStyle}></td>
+            <td colSpan={2} style={{ ...cellBase, fontSize: '9px', color: '#666' }}>HDCP</td>
+            {front9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.handicap}</td>
+            ))}
+            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+            <td style={spacerStyle}></td>
+            {back9.map(h => (
+              <td key={h.number} style={{ ...holeCellStyle, fontSize: '8px', color: '#666' }}>{h.handicap}</td>
+            ))}
+            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+            <td style={{ ...totalCellStyle, border: borderStyle }}></td>
+          </tr>
+        </thead>
+
+        <tbody>
+          {/* Side 1 */}
+          {renderSideRows(side1, 's1')}
+
+          {/* Side 2 */}
+          {renderSideRows(side2, 's2')}
+        </tbody>
+      </table>
+
+      {/* Info Section */}
+      <div style={{ marginTop: '12px', fontSize: '10px', lineHeight: '1.6' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '4px' }}>
+          {tournamentName} - {year} - Round {roundNumber} - {courseName} - Par {totalPar}
         </div>
-        <div style={{ marginBottom: '3px' }}>
-          <strong>Match {matchNumber}:</strong> {side1Names} vs {side2Names}
+
+        <div style={{ marginBottom: '2px' }}>
+          Game {matchNumber}{dateStr ? ` \u2014 ${dateStr}` : ''}
         </div>
-        <div style={{ marginBottom: '3px' }}>
-          * = stroke received &nbsp;&nbsp; ** = double stroke
-          {maxScore ? <span> &nbsp;&nbsp; Max score: par + {maxScore}</span> : null}
+
+        {/* Team lineups */}
+        <div style={{ marginBottom: '2px' }}>
+          {side1[0]?.teamName || 'Side 1'} - {side1.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}
         </div>
+        <div style={{ marginBottom: '6px' }}>
+          {side2[0]?.teamName || 'Side 2'} - {side2.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}
+        </div>
+
+        <table style={{ fontSize: '10px', borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr>
+              <td style={{ paddingRight: '8px', verticalAlign: 'top' }}>Format:</td>
+              <td>{formatLabel}</td>
+              <td style={{ paddingLeft: '24px' }}>{formatDesc}</td>
+            </tr>
+            <tr>
+              <td style={{ paddingRight: '8px', verticalAlign: 'top' }}>Tees:</td>
+              <td>{teeName}</td>
+              <td style={{ paddingLeft: '24px' }}>{totalYards} Yards</td>
+            </tr>
+          </tbody>
+        </table>
+
         {localRules && (
-          <div style={{ marginBottom: '3px' }}>
-            <strong>Local Rules:</strong> {localRules}
+          <div style={{ marginTop: '6px', fontSize: '9px', color: '#444', whiteSpace: 'pre-line' }}>
+            <span style={{ fontWeight: 'bold' }}>Other Rules:</span>
+            {'\n'}{localRules}
           </div>
         )}
-        <div style={{ marginTop: '4px', borderTop: '1px solid #ccc', paddingTop: '4px' }}>
-          <strong>Result:</strong> _______________________________________________
-        </div>
       </div>
     </div>
   )
