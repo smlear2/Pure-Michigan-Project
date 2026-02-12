@@ -121,7 +121,7 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -130,7 +130,7 @@ export default function PrintableScorecard({
         {back9.map(h => (
           <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -179,7 +179,7 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}>
             {first.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -188,7 +188,7 @@ export default function PrintableScorecard({
         {back9.map(h => (
           <td key={h.number} style={scoreCell}>
             {first.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -214,7 +214,7 @@ export default function PrintableScorecard({
     if (showBestBall) {
       rows.push(renderLabelRow('BEST BALL (NET)', `${sideKey}-bb`))
     }
-    rows.push(renderLabelRow('+/-', `${sideKey}-pm`))
+    rows.push(renderLabelRow('Match +/-', `${sideKey}-pm`))
 
     return rows
   }
@@ -222,7 +222,7 @@ export default function PrintableScorecard({
   const dateStr = date ? new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
   return (
-    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '10px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '10px', fontFamily: 'Arial, Helvetica, sans-serif', textTransform: 'uppercase' }}>
       {/* Scorecard Grid */}
       <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
         <colgroup>
@@ -267,8 +267,8 @@ export default function PrintableScorecard({
 
           {/* HOLE numbers row */}
           <tr>
-            <td style={{ ...labelCell, background: 'white', fontWeight: 'bold', ...pca }}></td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>HOLE</td>
+            <td colSpan={2} style={{ ...labelCell, background: 'white', fontWeight: 'bold', borderRight: 'none', ...pca }}></td>
+            <td style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>HOLE</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.number}</td>
             ))}
@@ -283,8 +283,8 @@ export default function PrintableScorecard({
 
           {/* DISTANCE row — tee color background */}
           <tr>
-            <td style={{ ...labelCell, fontWeight: 'bold' }}>{formatLabel}</td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{teeName}</td>
+            <td colSpan={2} style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}>{formatLabel}</td>
+            <td style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', borderLeft: 'none', ...pca }}>{teeName}</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
@@ -299,8 +299,8 @@ export default function PrintableScorecard({
 
           {/* PAR row */}
           <tr>
-            <td style={{ ...labelCell, fontWeight: 'bold' }}>{formatDesc}</td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>PAR</td>
+            <td colSpan={2} style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}>{formatDesc}</td>
+            <td style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>PAR</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.par}</td>
             ))}
@@ -315,8 +315,8 @@ export default function PrintableScorecard({
 
           {/* HDCP row */}
           <tr>
-            <td style={{ ...labelCell, fontWeight: 'bold' }}></td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>HDCP</td>
+            <td colSpan={2} style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}></td>
+            <td style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>HDCP</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.handicap}</td>
             ))}

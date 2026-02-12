@@ -182,7 +182,7 @@ export default function PrintScorecardsPage() {
       </div>
 
       {/* Scorecard fronts and backs — paired for double-sided printing */}
-      {/* Two fronts per page, then two backs per page */}
+      <div className="print-cards-container">
       {scorecardData.flatMap((card: any) => [
         // Front 1 (copy for side 1)
         <PrintableScorecard
@@ -261,6 +261,7 @@ export default function PrintScorecardsPage() {
           localRules={LOCAL_RULES}
         />,
       ])}
+      </div>
     </div>
   )
 }
