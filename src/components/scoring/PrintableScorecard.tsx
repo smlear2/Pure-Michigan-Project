@@ -247,24 +247,6 @@ export default function PrintableScorecard({
             </td>
           </tr>
 
-          {/* FRONT / BACK */}
-          <tr>
-            <td colSpan={3} style={{ border: 'none', background: 'white' }}></td>
-            <td colSpan={front9.length + 1} style={{
-              textAlign: 'center', fontSize: '10px', fontWeight: 'bold',
-              padding: '2px', border: 'none', background: 'white',
-            }}>
-              FRONT
-            </td>
-            <td style={{ ...spacer, border: 'none' }}></td>
-            <td colSpan={back9.length + 2} style={{
-              textAlign: 'center', fontSize: '10px', fontWeight: 'bold',
-              padding: '2px', border: 'none', background: 'white',
-            }}>
-              BACK
-            </td>
-          </tr>
-
           {/* HOLE numbers row */}
           <tr>
             <td style={{ ...labelCell, background: 'white', fontWeight: 'bold', borderRight: 'none', borderBottom: 'none', ...pca }}>{'Format: '}{formatLabel}</td>
