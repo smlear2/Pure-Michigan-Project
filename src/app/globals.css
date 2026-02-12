@@ -260,10 +260,14 @@
     color: black !important;
     padding: 0.15in 0.3in !important;
     margin: 0 !important;
-    height: 4.25in;
-    max-height: 4.25in;
+    height: 4.19in;
+    max-height: 4.19in;
     overflow: hidden;
     box-sizing: border-box;
+  }
+
+  .print-cards-container > .print-scorecard:nth-child(odd) {
+    margin-bottom: 0.12in !important;
   }
 
   .print-cards-container > .print-scorecard:nth-child(even) {
