@@ -267,8 +267,8 @@ export default function PrintableScorecard({
 
           {/* HOLE numbers row */}
           <tr>
-            <td colSpan={2} style={{ ...labelCell, background: 'white', fontWeight: 'bold', borderRight: 'none', ...pca }}></td>
-            <td style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>HOLE</td>
+            <td style={{ ...labelCell, background: 'white', fontWeight: 'bold', ...pca }}></td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>HOLE</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.number}</td>
             ))}
@@ -283,8 +283,8 @@ export default function PrintableScorecard({
 
           {/* DISTANCE row — tee color background */}
           <tr>
-            <td colSpan={2} style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}>{formatLabel}</td>
-            <td style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', borderLeft: 'none', ...pca }}>{teeName}</td>
+            <td style={{ ...labelCell, fontWeight: 'bold' }}>{formatLabel}</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{teeName}</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
@@ -299,8 +299,8 @@ export default function PrintableScorecard({
 
           {/* PAR row */}
           <tr>
-            <td colSpan={2} style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}>{formatDesc}</td>
-            <td style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>PAR</td>
+            <td style={{ ...labelCell, fontWeight: 'bold' }}>{formatDesc}</td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>PAR</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.par}</td>
             ))}
@@ -315,8 +315,8 @@ export default function PrintableScorecard({
 
           {/* HDCP row */}
           <tr>
-            <td colSpan={2} style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}></td>
-            <td style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>HDCP</td>
+            <td style={{ ...labelCell, fontWeight: 'bold' }}></td>
+            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>HDCP</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.handicap}</td>
             ))}
