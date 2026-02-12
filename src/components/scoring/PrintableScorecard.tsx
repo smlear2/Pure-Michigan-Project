@@ -121,7 +121,7 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '8px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -130,7 +130,7 @@ export default function PrintableScorecard({
         {back9.map(h => (
           <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '8px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -179,7 +179,7 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}>
             {first.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '8px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
@@ -188,7 +188,7 @@ export default function PrintableScorecard({
         {back9.map(h => (
           <td key={h.number} style={scoreCell}>
             {first.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '10px', lineHeight: '1' }}>{'\u25CF'}</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '8px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
