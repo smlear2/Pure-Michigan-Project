@@ -237,36 +237,20 @@ export default function PrintableScorecard({
             <td style={{ ...totalCell }}>TOTAL</td>
           </tr>
 
-          {/* TEES row — tee color background */}
+          {/* DISTANCE row — tee color background */}
           <tr>
             <td style={{ ...labelCell, fontSize: '10px', fontWeight: 'bold' }}>{formatLabel}</td>
-            <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold' }}>TEES</td>
+            <td colSpan={2} style={{ ...holeCell, fontSize: '9px', background: teeColor, color: 'white', ...pca }}>{teeName}</td>
             {front9.map(h => (
-              <td key={h.number} style={teeCell}>{teeName}</td>
+              <td key={h.number} style={{ ...holeCell, fontSize: '9px', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
-            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}></td>
+            <td style={{ ...totalCell, fontSize: '9px', background: teeColor, color: 'white', ...pca }}>{frontYards}</td>
             <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={teeCell}>{teeName}</td>
+              <td key={h.number} style={{ ...holeCell, fontSize: '9px', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
-            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}></td>
-            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}></td>
-          </tr>
-
-          {/* DISTANCE row */}
-          <tr>
-            <td style={labelCell}></td>
-            <td colSpan={2} style={{ ...holeCell, fontSize: '9px' }}>DISTANCE</td>
-            {front9.map(h => (
-              <td key={h.number} style={{ ...holeCell, fontSize: '9px' }}>{h.yardage}</td>
-            ))}
-            <td style={{ ...totalCell, fontSize: '9px' }}>{frontYards}</td>
-            <td style={spacer}></td>
-            {back9.map(h => (
-              <td key={h.number} style={{ ...holeCell, fontSize: '9px' }}>{h.yardage}</td>
-            ))}
-            <td style={{ ...totalCell, fontSize: '9px' }}>{backYards}</td>
-            <td style={{ ...totalCell, fontSize: '9px' }}>{totalYards}</td>
+            <td style={{ ...totalCell, fontSize: '9px', background: teeColor, color: 'white', ...pca }}>{backYards}</td>
+            <td style={{ ...totalCell, fontSize: '9px', background: teeColor, color: 'white', ...pca }}>{totalYards}</td>
           </tr>
 
           {/* PAR row */}
