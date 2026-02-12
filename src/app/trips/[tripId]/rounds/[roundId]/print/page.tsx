@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import PrintableScorecard from '@/components/scoring/PrintableScorecard'
+import PrintableScorecard, { PrintableScorecardBack } from '@/components/scoring/PrintableScorecard'
 import { strokeAllocation } from '@/lib/golf'
 import type { HoleInfo } from '@/lib/golf'
 
@@ -128,6 +128,9 @@ export default function PrintScorecardsPage() {
       return { ...p, strokeHoles }
     })
 
+    const side1Players = players.filter((p: any) => p.side === 1)
+    const side2Players = players.filter((p: any) => p.side === 2)
+
     return {
       matchNumber: match.matchNumber,
       holes: holes.map((h: any) => ({
@@ -137,8 +140,13 @@ export default function PrintScorecardsPage() {
         handicap: h.handicap,
       })),
       players,
+      side1Players,
+      side2Players,
     }
   })
+
+  const totalPar = holes.reduce((s: number, h: any) => s + h.par, 0)
+  const totalYards = holes.reduce((s: number, h: any) => s + h.yardage, 0)
 
   return (
     <div className="min-h-screen" style={{ background: 'white' }}>
@@ -173,10 +181,12 @@ export default function PrintScorecardsPage() {
         </button>
       </div>
 
-      {/* Scorecards — two copies per match (one for each side) */}
-      {scorecardData.flatMap((card: any) => [1, 2].map(copy => (
+      {/* Scorecard fronts and backs — paired for double-sided printing */}
+      {/* Two fronts per page, then two backs per page */}
+      {scorecardData.flatMap((card: any) => [
+        // Front 1 (copy for side 1)
         <PrintableScorecard
-          key={`${card.matchNumber}-${copy}`}
+          key={`${card.matchNumber}-front-1`}
           tournamentName={trip.name || 'Michigan Open'}
           year={trip.year}
           courseName={courseName}
@@ -192,9 +202,65 @@ export default function PrintScorecardsPage() {
           holes={card.holes}
           players={card.players}
           showBestBall={showBestBall}
+        />,
+        // Front 2 (copy for side 2)
+        <PrintableScorecard
+          key={`${card.matchNumber}-front-2`}
+          tournamentName={trip.name || 'Michigan Open'}
+          year={trip.year}
+          courseName={courseName}
+          teeName={teeName}
+          teeColor={teeColor}
+          teeRating={teeRating}
+          teeSlope={teeSlope}
+          roundName={roundName}
+          roundNumber={round.roundNumber}
+          date={round.date}
+          format={format}
+          matchNumber={card.matchNumber}
+          holes={card.holes}
+          players={card.players}
+          showBestBall={showBestBall}
+        />,
+        // Back 1 (info for side 1)
+        <PrintableScorecardBack
+          key={`${card.matchNumber}-back-1`}
+          tournamentName={trip.name || 'Michigan Open'}
+          year={trip.year}
+          courseName={courseName}
+          roundNumber={round.roundNumber}
+          format={format}
+          matchNumber={card.matchNumber}
+          date={round.date}
+          totalPar={totalPar}
+          totalYards={totalYards}
+          teeName={teeName}
+          teeRating={teeRating}
+          teeSlope={teeSlope}
+          side1={card.side1Players}
+          side2={card.side2Players}
           localRules={LOCAL_RULES}
-        />
-      )))}
+        />,
+        // Back 2 (info for side 2)
+        <PrintableScorecardBack
+          key={`${card.matchNumber}-back-2`}
+          tournamentName={trip.name || 'Michigan Open'}
+          year={trip.year}
+          courseName={courseName}
+          roundNumber={round.roundNumber}
+          format={format}
+          matchNumber={card.matchNumber}
+          date={round.date}
+          totalPar={totalPar}
+          totalYards={totalYards}
+          teeName={teeName}
+          teeRating={teeRating}
+          teeSlope={teeSlope}
+          side1={card.side1Players}
+          side2={card.side2Players}
+          localRules={LOCAL_RULES}
+        />,
+      ])}
     </div>
   )
 }

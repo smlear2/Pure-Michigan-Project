@@ -95,7 +95,7 @@ export default function PrintableScorecard({
   // Cell styles
   const holeCell: React.CSSProperties = { border: bd, textAlign: 'center', fontSize: '10px', padding: '1px 1px', minWidth: '34px' }
   const totalCell: React.CSSProperties = { ...holeCell, fontWeight: 'bold' }
-  const scoreCell: React.CSSProperties = { ...holeCell, height: '40px', position: 'relative' as const }
+  const scoreCell: React.CSSProperties = { ...holeCell, height: '30px', position: 'relative' as const }
   const labelCell: React.CSSProperties = { border: bd, textAlign: 'left', fontSize: '10px', padding: '1px 6px', whiteSpace: 'nowrap', overflow: 'hidden' }
 
   // Tee-colored cell for TEES row
@@ -121,21 +121,21 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
-        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
         <td style={spacer}></td>
         {back9.map(h => (
           <td key={h.number} style={scoreCell}>
             {showStrokes && player.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
-        <td style={{ ...totalCell, height: '40px' }}></td>
-        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
       </tr>
     )
   }
@@ -150,13 +150,13 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}></td>
         ))}
-        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
         <td style={spacer}></td>
         {back9.map(h => (
           <td key={h.number} style={scoreCell}></td>
         ))}
-        <td style={{ ...totalCell, height: '40px' }}></td>
-        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
       </tr>
     )
   }
@@ -179,21 +179,21 @@ export default function PrintableScorecard({
         {front9.map(h => (
           <td key={h.number} style={scoreCell}>
             {first.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
-        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
         <td style={spacer}></td>
         {back9.map(h => (
           <td key={h.number} style={scoreCell}>
             {first.strokeHoles.includes(h.number) && (
-              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+              <span style={{ position: 'absolute', top: '1px', right: '2px', fontSize: '12px', lineHeight: '1' }}>{'\u25CF'}</span>
             )}
           </td>
         ))}
-        <td style={{ ...totalCell, height: '40px' }}></td>
-        <td style={{ ...totalCell, height: '40px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
+        <td style={{ ...totalCell, height: '30px' }}></td>
       </tr>
     )
   }
@@ -240,7 +240,7 @@ export default function PrintableScorecard({
           {/* Title row — bright green bar */}
           <tr>
             <td colSpan={totalCols} style={{
-              background: '#00CC00', color: 'black', fontSize: '13px', fontWeight: 'bold',
+              background: '#4CAF50', color: 'white', fontSize: '13px', fontWeight: 'bold',
               padding: '5px 8px', textAlign: 'center', border: '2px solid #000', ...pca,
             }}>
               {tournamentName.toUpperCase()} - {year} - Round {roundNumber} - {courseName}
@@ -336,45 +336,98 @@ export default function PrintableScorecard({
         </tbody>
       </table>
 
-      {/* Info Section */}
-      <div style={{ marginTop: '14px', fontSize: '10px', lineHeight: '1.6' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '4px' }}>
-          {tournamentName.toUpperCase()} - {year} - Round {roundNumber} - {courseName} - Par {totalPar}
-        </div>
+    </div>
+  )
+}
 
-        <div style={{ marginBottom: '2px' }}>
-          Game {matchNumber}{dateStr ? ` \u2014 ${dateStr}` : ''}
-        </div>
+export function PrintableScorecardBack({
+  tournamentName,
+  year,
+  courseName,
+  roundNumber,
+  format,
+  matchNumber,
+  date,
+  totalPar,
+  totalYards,
+  teeName,
+  teeRating,
+  teeSlope,
+  side1,
+  side2,
+  localRules,
+}: {
+  tournamentName: string
+  year: number
+  courseName: string
+  roundNumber: number
+  format: string
+  matchNumber: number
+  date: string | null
+  totalPar: number
+  totalYards: number
+  teeName: string
+  teeRating: number
+  teeSlope: number
+  side1: { name: string; teamName: string; handicapIndex: number }[]
+  side2: { name: string; teamName: string; handicapIndex: number }[]
+  localRules?: string
+}) {
+  const formatLabel = FORMAT_LABELS[format] || format
+  const formatDesc = FORMAT_DESCRIPTIONS[format] || ''
+  const dateStr = date ? new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
-        <div style={{ marginBottom: '2px' }}>
-          {side1[0]?.teamName || 'Side 1'} - {side1.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}
-        </div>
-        <div style={{ marginBottom: '6px' }}>
-          {side2[0]?.teamName || 'Side 2'} - {side2.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}
-        </div>
+  const lbl: React.CSSProperties = { fontSize: '11px', color: '#555', fontWeight: 'bold', paddingRight: '12px', verticalAlign: 'top', paddingBottom: '4px' }
+  const val: React.CSSProperties = { fontSize: '12px', paddingBottom: '4px' }
 
-        <table style={{ fontSize: '10px', borderCollapse: 'collapse' }}>
-          <tbody>
-            <tr>
-              <td style={{ paddingRight: '8px', verticalAlign: 'top' }}>Format:</td>
-              <td>{formatLabel}</td>
-              <td style={{ paddingLeft: '24px' }}>{formatDesc}</td>
-            </tr>
-            <tr>
-              <td style={{ paddingRight: '8px', verticalAlign: 'top' }}>Tees:</td>
-              <td>{teeName}</td>
-              <td style={{ paddingLeft: '24px' }}>{totalYards} Yards</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {localRules && (
-          <div style={{ marginTop: '6px', fontSize: '9px', color: '#333', whiteSpace: 'pre-line' }}>
-            <span style={{ fontWeight: 'bold' }}>Other Rules:</span>
-            {'\n'}{localRules}
-          </div>
-        )}
+  return (
+    <div className="print-scorecard" style={{ background: 'white', color: 'black', padding: '20px 30px', fontFamily: 'Arial, Helvetica, sans-serif', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      {/* Title */}
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <div style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '4px' }}>
+          {tournamentName.toUpperCase()}
+        </div>
+        <div style={{ fontSize: '13px', color: '#333' }}>
+          {year} &mdash; Round {roundNumber} &mdash; {courseName} &mdash; Par {totalPar}
+        </div>
       </div>
+
+      {/* Match Info */}
+      <table style={{ borderCollapse: 'collapse', margin: '0 auto', fontSize: '12px' }}>
+        <tbody>
+          <tr>
+            <td style={lbl}>Game</td>
+            <td style={val}>{matchNumber}{dateStr ? ` \u2014 ${dateStr}` : ''}</td>
+          </tr>
+          <tr>
+            <td style={lbl}>{side1[0]?.teamName || 'Side 1'}</td>
+            <td style={val}>{side1.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}</td>
+          </tr>
+          <tr>
+            <td style={lbl}>{side2[0]?.teamName || 'Side 2'}</td>
+            <td style={val}>{side2.map(p => `${p.name} (${p.handicapIndex})`).join(' & ')}</td>
+          </tr>
+          <tr><td style={{ paddingBottom: '8px' }} colSpan={2}></td></tr>
+          <tr>
+            <td style={lbl}>Format</td>
+            <td style={val}>{formatLabel} {formatDesc}</td>
+          </tr>
+          <tr>
+            <td style={lbl}>Tees</td>
+            <td style={val}>{teeName} ({teeRating}/{teeSlope}) &mdash; {totalYards} Yards</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Local Rules */}
+      {localRules && (
+        <div style={{ marginTop: '20px', padding: '12px 16px', border: '1px solid #ccc', borderRadius: '4px', maxWidth: '600px', margin: '20px auto 0' }}>
+          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px' }}>Other Rules</div>
+          <div style={{ fontSize: '11px', color: '#333', whiteSpace: 'pre-line', lineHeight: '1.6' }}>
+            {localRules}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

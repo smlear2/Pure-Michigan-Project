@@ -249,10 +249,20 @@
   }
 
   .print-scorecard {
-    page-break-after: always;
+    page-break-inside: avoid;
     background: white !important;
     color: black !important;
     padding: 0 !important;
+    height: 48%;
+    box-sizing: border-box;
+  }
+
+  .print-scorecard:nth-child(odd) {
+    margin-bottom: 2%;
+  }
+
+  .print-scorecard:nth-child(even) {
+    page-break-after: always;
   }
 
   .print-scorecard:last-child {
