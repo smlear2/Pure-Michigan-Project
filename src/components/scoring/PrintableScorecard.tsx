@@ -95,7 +95,7 @@ export default function PrintableScorecard({
   // Cell styles
   const holeCell: React.CSSProperties = { border: bd, textAlign: 'center', fontSize: '10px', padding: '1px 1px', minWidth: '28px' }
   const totalCell: React.CSSProperties = { ...holeCell, minWidth: '34px', fontWeight: 'bold' }
-  const scoreCell: React.CSSProperties = { ...holeCell, height: '22px' }
+  const scoreCell: React.CSSProperties = { ...holeCell, height: '22px', position: 'relative' as const }
   const labelCell: React.CSSProperties = { border: bd, textAlign: 'left', fontSize: '10px', padding: '1px 6px', whiteSpace: 'nowrap', overflow: 'hidden' }
 
   // Tee-colored cell for TEES row
@@ -123,14 +123,18 @@ export default function PrintableScorecard({
         </td>
         {front9.map(h => (
           <td key={h.number} style={{ ...scoreCell, borderTop: topBorder }}>
-            {showStrokes && player.strokeHoles.includes(h.number) ? '*' : ''}
+            {showStrokes && player.strokeHoles.includes(h.number) && (
+              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+            )}
           </td>
         ))}
         <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
         <td style={{ ...spacer, borderTop: topBorder }}></td>
         {back9.map(h => (
           <td key={h.number} style={{ ...scoreCell, borderTop: topBorder }}>
-            {showStrokes && player.strokeHoles.includes(h.number) ? '*' : ''}
+            {showStrokes && player.strokeHoles.includes(h.number) && (
+              <span style={{ position: 'absolute', top: '0px', right: '2px', fontSize: '9px', lineHeight: '1' }}>*</span>
+            )}
           </td>
         ))}
         <td style={{ ...totalCell, height: '24px', borderTop: topBorder }}></td>
