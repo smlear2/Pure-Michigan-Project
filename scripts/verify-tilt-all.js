@@ -74,7 +74,6 @@ const YEARS = {
       'Joey Aiello': { total: 118, payout: 210 },
       'Dave Meyer': { total: 106, payout: 70 },
       'Joe Spencer': { total: -2, payout: 0 },
-      'Kip Owen': { total: 0, payout: 0 },  // R3 incomplete data — will be off
     },
   },
   2024: {
