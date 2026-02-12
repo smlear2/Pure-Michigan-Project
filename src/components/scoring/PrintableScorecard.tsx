@@ -267,7 +267,7 @@ export default function PrintableScorecard({
 
           {/* HOLE numbers row */}
           <tr>
-            <td style={{ ...labelCell, background: 'white', fontWeight: 'bold', ...pca }}></td>
+            <td style={{ ...labelCell, background: 'white', fontWeight: 'bold', borderRight: 'none', ...pca }}></td>
             <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>HOLE</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.number}</td>
@@ -281,25 +281,25 @@ export default function PrintableScorecard({
             <td style={totalCell}>TOTAL</td>
           </tr>
 
-          {/* DISTANCE row */}
+          {/* DISTANCE row — tee color on yardage cells */}
           <tr>
-            <td style={{ ...labelCell, fontWeight: 'bold' }}>{formatLabel}</td>
+            <td style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}>{formatLabel}</td>
             <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>{teeName}</td>
             {front9.map(h => (
-              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.yardage}</td>
+              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
-            <td style={totalCell}>{frontYards}</td>
+            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}>{frontYards}</td>
             <td style={spacer}></td>
             {back9.map(h => (
-              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.yardage}</td>
+              <td key={h.number} style={{ ...holeCell, fontWeight: 'bold', background: teeColor, color: 'white', ...pca }}>{h.yardage}</td>
             ))}
-            <td style={totalCell}>{backYards}</td>
-            <td style={totalCell}>{totalYards}</td>
+            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}>{backYards}</td>
+            <td style={{ ...totalCell, background: teeColor, color: 'white', ...pca }}>{totalYards}</td>
           </tr>
 
           {/* PAR row */}
           <tr>
-            <td style={{ ...labelCell, fontWeight: 'bold' }}>{formatDesc}</td>
+            <td style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}>{formatDesc}</td>
             <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>PAR</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.par}</td>
@@ -315,7 +315,7 @@ export default function PrintableScorecard({
 
           {/* HDCP row */}
           <tr>
-            <td style={{ ...labelCell, fontWeight: 'bold' }}></td>
+            <td style={{ ...labelCell, fontWeight: 'bold', borderRight: 'none' }}></td>
             <td colSpan={2} style={{ ...holeCell, fontWeight: 'bold', borderLeft: 'none' }}>HDCP</td>
             {front9.map(h => (
               <td key={h.number} style={{ ...holeCell, fontWeight: 'bold' }}>{h.handicap}</td>
