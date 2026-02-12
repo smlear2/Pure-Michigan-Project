@@ -95,7 +95,7 @@ export default function PrintableScorecard({
   // Cell styles
   const holeCell: React.CSSProperties = { border: bd, textAlign: 'center', verticalAlign: 'middle', fontSize: '10px', padding: '0 1px', minWidth: '34px' }
   const totalCell: React.CSSProperties = { ...holeCell, fontWeight: 'bold' }
-  const scoreCell: React.CSSProperties = { ...holeCell, height: '34px', position: 'relative' as const }
+  const scoreCell: React.CSSProperties = { ...holeCell, height: '34px', padding: '1px 1px', position: 'relative' as const }
   const labelCell: React.CSSProperties = { border: bd, textAlign: 'left', verticalAlign: 'middle', fontSize: '10px', padding: '0 6px', whiteSpace: 'nowrap', overflow: 'hidden' }
 
   // Tee-colored cell for TEES row
