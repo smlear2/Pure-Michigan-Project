@@ -227,8 +227,8 @@ export default function PrintableScorecard({
       <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: '120px' }} />
-          <col style={{ width: '28px' }} />
-          <col style={{ width: '22px' }} />
+          <col style={{ width: '24px' }} />
+          <col style={{ width: '18px' }} />
           {front9.map(h => <col key={`f${h.number}`} style={{ width: '34px' }} />)}
           <col style={{ width: '34px' }} />
           <col style={{ width: '6px' }} />
