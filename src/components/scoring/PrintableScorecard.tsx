@@ -115,7 +115,7 @@ export default function PrintableScorecard({
         <td colSpan={2} style={{ ...labelCell, fontSize: '12px', fontWeight: 'bold', borderRight: 'none' }}>
           {player.name} <span style={{ fontSize: '9px', fontWeight: 'normal' }}>(HDCP {player.courseHandicap})</span>
         </td>
-        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none' }}>
+        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none', textAlign: 'left' }}>
           {showStrokes ? strokes : ''}
         </td>
         {front9.map(h => (
@@ -173,7 +173,7 @@ export default function PrintableScorecard({
         <td colSpan={2} style={{ ...labelCell, fontSize: '12px', fontWeight: 'bold', borderRight: 'none' }}>
           {names} <span style={{ fontSize: '9px', fontWeight: 'normal' }}>(HDCP {hdcps})</span>
         </td>
-        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none' }}>
+        <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none', textAlign: 'left' }}>
           {strokes}
         </td>
         {front9.map(h => (
