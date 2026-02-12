@@ -54,7 +54,7 @@ const FORMAT_DESCRIPTIONS: Record<string, string> = {
 
 // Print color helper
 const pca = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties
-const bd = '1px solid #000'
+const bd = '2px solid #000'
 const spacer = { width: '6px', border: 'none', padding: 0, background: 'white', ...pca } as React.CSSProperties
 
 export default function PrintableScorecard({
@@ -110,7 +110,7 @@ export default function PrintableScorecard({
   function renderPlayerRow(player: PlayerData, showStrokes: boolean, isFirst: boolean) {
     const strokes = getDisplayStrokes(player)
     const nameFontSize = '12px'
-    const topBorder = isFirst ? '2px solid #000' : bd
+    const topBorder = bd
 
     return (
       <tr key={`player-${player.name}`}>
