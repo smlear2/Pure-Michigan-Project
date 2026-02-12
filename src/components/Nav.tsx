@@ -27,7 +27,7 @@ export function Nav() {
   }
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-slate-200/10 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl">
+    <nav className="no-print sticky top-0 z-40 w-full border-b border-slate-200/10 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Left: Brand */}
         <Link
