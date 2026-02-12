@@ -242,18 +242,26 @@
     display: none !important;
   }
 
-  body {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
     background: white !important;
     color: black !important;
     font-size: 12px;
   }
 
+  .print-cards-container {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .print-scorecard {
     background: white !important;
     color: black !important;
-    padding: 0.2in 0.4in !important;
-    height: 4in;
-    max-height: 4in;
+    padding: 0.15in 0.3in !important;
+    margin: 0 !important;
+    height: 4.25in;
+    max-height: 4.25in;
     overflow: hidden;
     box-sizing: border-box;
   }
