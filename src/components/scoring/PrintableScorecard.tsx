@@ -113,7 +113,7 @@ export default function PrintableScorecard({
     return (
       <tr key={`player-${player.name}`}>
         <td colSpan={2} style={{ ...labelCell, fontSize: '12px', fontWeight: 'bold', borderRight: 'none' }}>
-          {player.name} <span style={{ fontSize: '9px', fontWeight: 'normal' }}>(HDCP {player.courseHandicap})</span>
+          {player.name} ({player.courseHandicap})
         </td>
         <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none', textAlign: 'left' }}>
           {showStrokes ? strokes : ''}
@@ -171,7 +171,7 @@ export default function PrintableScorecard({
     return (
       <tr key={`team-${sideKey}`}>
         <td colSpan={2} style={{ ...labelCell, fontSize: '12px', fontWeight: 'bold', borderRight: 'none' }}>
-          {names} <span style={{ fontSize: '9px', fontWeight: 'normal' }}>(HDCP {hdcps})</span>
+          {names} ({hdcps})
         </td>
         <td style={{ ...holeCell, fontSize: '11px', fontWeight: 'bold', borderLeft: 'none', textAlign: 'left' }}>
           {strokes}
@@ -331,6 +331,17 @@ export default function PrintableScorecard({
         </thead>
 
         <tbody>
+          <tr>
+            <td colSpan={3} style={{ ...labelCell, fontSize: '9px', fontWeight: 'bold', textAlign: 'left', border: 'none', padding: '2px 6px 0' }}>
+              Player (HDCP)
+            </td>
+            {front9.map(h => <td key={h.number} style={{ border: 'none', padding: 0 }}></td>)}
+            <td style={{ border: 'none', padding: 0 }}></td>
+            <td style={{ border: 'none', padding: 0 }}></td>
+            {back9.map(h => <td key={h.number} style={{ border: 'none', padding: 0 }}></td>)}
+            <td style={{ border: 'none', padding: 0 }}></td>
+            <td style={{ border: 'none', padding: 0 }}></td>
+          </tr>
           {renderSideRows(side1, 's1')}
           {renderSideRows(side2, 's2')}
         </tbody>
