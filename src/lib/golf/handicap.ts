@@ -24,6 +24,9 @@ export interface HandicapConfig {
   teamCombos?: {
     [format: string]: TeamCombo
   }
+  skinsTeamCombos?: {          // Team combos for skins (may differ from match play)
+    [format: string]: TeamCombo
+  }
 }
 
 export const DEFAULT_HANDICAP_CONFIG: HandicapConfig = {
@@ -119,17 +122,45 @@ export function receivesDoubleStroke(playingHdcp: number, holeStrokeIndex: numbe
   return (playingHdcp - 18) >= holeStrokeIndex
 }
 
-// --- Skins handicap ---
+// --- WHS Course Handicap (2026+) ---
+
+/**
+ * WHS Course Handicap: ROUND(index × slope / 113 + (rating - par))
+ *
+ * This is the base for ALL handicap calculations in 2026+.
+ * Match play and skins both start from this value, then apply allowance/cap differently.
+ */
+export function whsCourseHandicap(
+  index: number,
+  slope: number,
+  rating: number,
+  par: number,
+): number {
+  return Math.round(index * slope / 113 + (rating - par))
+}
+
+/**
+ * Apply allowance percentage and cap to a WHS course handicap.
+ * Formula: min(max, max(0, ROUND(courseHdcp × pct / 100)))
+ *
+ * Used for 2026+ skins and match play after whsCourseHandicap().
+ */
+export function whsPlayingHandicap(
+  courseHdcp: number,
+  pct: number = 80,
+  maxHdcp: number = 24,
+): number {
+  return Math.min(maxHdcp, Math.max(0, Math.round(courseHdcp * pct / 100)))
+}
+
+// --- Legacy skins handicap (2023-2025) ---
 
 /**
  * Calculate skins handicap from handicap index and course data.
  * Formula: min(maxHdcp, max(0, CEIL((index × slope/113 + (rating - par)) × 0.8)))
  *
- * This is DIFFERENT from match-play handicap:
- * - Uses CEIL rounding (not ROUND)
- * - Applies 0.8 multiplier in one step (before rounding, not after)
- * - Includes USGA (rating - par) adjustment
- * - NOT off the low
+ * Legacy formula (2023-2025): applies 0.8 in one step with CEIL rounding.
+ * For 2026+, use whsCourseHandicap() + whsPlayingHandicap() instead.
  */
 export function skinsHandicap(
   index: number,

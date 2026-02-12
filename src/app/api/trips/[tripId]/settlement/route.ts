@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, requireTripMember } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 import { simplifyDebts } from '@/lib/finance'
-import { calculateSkins, HoleSkinScore, calculateTilt, TiltHoleScore } from '@/lib/golf'
+import { calculateTilt, TiltHoleScore, computeSkinsForRound, HandicapConfig } from '@/lib/golf'
 
 // GET /api/trips/[tripId]/settlement — net balances + simplified debts
 export async function GET(
@@ -80,7 +80,7 @@ export async function GET(
     const skinsRounds = await prisma.round.findMany({
       where: { tripId: params.tripId, skinsEnabled: true },
       include: {
-        trip: { select: { defaultSkinsEntryFee: true, defaultSkinsCarryover: true } },
+        trip: { select: { defaultSkinsEntryFee: true, defaultSkinsCarryover: true, handicapConfig: true } },
         tee: { include: { holes: { orderBy: { number: 'asc' } } } },
       },
     })
@@ -94,7 +94,13 @@ export async function GET(
       include: {
         hole: true,
         matchPlayer: {
-          select: { tripPlayerId: true, match: { select: { roundId: true } } },
+          select: {
+            tripPlayerId: true,
+            matchId: true,
+            side: true,
+            match: { select: { roundId: true } },
+            tripPlayer: { select: { handicapAtTime: true, skinsOptIn: true } },
+          },
         },
       },
     })
@@ -114,34 +120,50 @@ export async function GET(
       const roundScores = scoresByRound.get(round.id) || []
       if (roundScores.length === 0) continue
 
-      const holeScoresMap = new Map<string, Map<string, number>>()
-      const uniquePlayers = new Set<string>()
-
-      for (const score of roundScores) {
-        const tpId = score.matchPlayer.tripPlayerId
-        if (!skinsOptedIn.has(tpId)) continue
-        if (!holeScoresMap.has(score.holeId)) holeScoresMap.set(score.holeId, new Map())
-        const holeMap = holeScoresMap.get(score.holeId)!
-        uniquePlayers.add(tpId)
-        if (!holeMap.has(tpId)) holeMap.set(tpId, score.netScore)
-      }
-
-      const holeScores: HoleSkinScore[] = round.tee.holes.map(hole => {
-        const holeMap = holeScoresMap.get(hole.id)
-        if (!holeMap) return { holeNumber: hole.number, playerScores: [] }
-        return {
-          holeNumber: hole.number,
-          playerScores: Array.from(holeMap.entries()).map(([playerId, netScore]) => ({ playerId, netScore })),
-        }
-      })
-
+      const hdcpConfig = round.trip.handicapConfig as HandicapConfig | null
       const entryFee = wagerConfig?.entryFee ?? round.trip.defaultSkinsEntryFee
       const carryover = wagerConfig?.carryover ?? round.trip.defaultSkinsCarryover
-      const result = calculateSkins(holeScores, entryFee, uniquePlayers.size, carryover)
 
-      for (const tpId of Array.from(uniquePlayers)) {
-        const pt = result.playerTotals.find(p => p.playerId === tpId)
-        const moneyWon = pt?.moneyWon ?? 0
+      // Build player inputs from scores
+      const playerMap = new Map<string, { handicapIndex: number; skinsOptIn: boolean }>()
+      for (const s of roundScores) {
+        const tpId = s.matchPlayer.tripPlayerId
+        if (!playerMap.has(tpId)) {
+          playerMap.set(tpId, {
+            handicapIndex: s.matchPlayer.tripPlayer.handicapAtTime ?? 0,
+            skinsOptIn: s.matchPlayer.tripPlayer.skinsOptIn,
+          })
+        }
+      }
+
+      const { playerPayouts, uniquePlayerCount } = computeSkinsForRound(
+        round.format,
+        round.tee,
+        roundScores.map(s => ({
+          holeId: s.holeId,
+          grossScore: s.grossScore,
+          tripPlayerId: s.matchPlayer.tripPlayerId,
+          matchId: s.matchPlayer.matchId,
+          side: s.matchPlayer.side,
+        })),
+        Array.from(playerMap.entries()).map(([tpId, p]) => ({
+          tripPlayerId: tpId,
+          ...p,
+        })),
+        hdcpConfig,
+        entryFee,
+        carryover,
+      )
+
+      // Opted-in players who didn't win still pay entry fee
+      const optedInPlayers = new Set(
+        Array.from(playerMap.entries())
+          .filter(([, p]) => p.skinsOptIn)
+          .map(([tpId]) => tpId)
+      )
+      for (const tpId of Array.from(optedInPlayers)) {
+        const payout = playerPayouts.find(p => p.playerId === tpId)
+        const moneyWon = payout?.moneyWon ?? 0
         const bal = gamblingBalances.get(tpId) ?? 0
         gamblingBalances.set(tpId, bal + moneyWon - entryFee)
       }

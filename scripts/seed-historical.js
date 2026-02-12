@@ -54,6 +54,9 @@ const YEAR_CONFIGS = {
         FOURSOMES: { lowPct: 60, highPct: 40 },
         SCRAMBLE: { lowPct: 35, highPct: 15 },
       },
+      skinsTeamCombos: {
+        FOURSOMES: { lowPct: 50, highPct: 50 },
+      },
     },
     players: [
       // Europe
@@ -135,6 +138,9 @@ const YEAR_CONFIGS = {
         FOURSOMES: { lowPct: 60, highPct: 40 },
         SCRAMBLE: { lowPct: 35, highPct: 15 },
       },
+      skinsTeamCombos: {
+        FOURSOMES: { lowPct: 50, highPct: 50 },
+      },
     },
     players: [
       // Europe
@@ -154,7 +160,7 @@ const YEAR_CONFIGS = {
       { name: 'Stove Myers', team: 'US', index: 11, tilt: true, skins: true },
       { name: 'Zack Stitt', team: 'US', index: 23.6, tilt: false, skins: true },
       { name: 'Kip Owen', team: 'US', index: 19.9, tilt: false, skins: true },
-      { name: 'Ryan Hubona', team: 'US', index: 20.1, tilt: false, skins: false },
+      { name: 'Ryan Hubona', team: 'US', index: 20.1, tilt: false, skins: true },
     ],
     rounds: [
       { num: 1, course: 'Crooked Tree', tee: 'Purple', format: 'FOURBALL', skins: true, tilt: true },

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, requireOrganizer, requireTripMember } from '@/lib/auth'
 import { createMatchSchema } from '@/lib/validators/match'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
-import { courseHandicap, computeMatchHandicaps, skinsHandicap } from '@/lib/golf'
+import { courseHandicap, whsCourseHandicap, whsPlayingHandicap, computeMatchHandicaps } from '@/lib/golf'
 import type { HandicapConfig } from '@/lib/golf'
 
 // GET /api/trips/[tripId]/rounds/[roundId]/matches
@@ -93,18 +93,22 @@ export async function POST(
     let effectiveConfig: HandicapConfig | null
 
     if (hdcpConfig?.useUnifiedFormula) {
-      // Unified formula: use skinsHandicap() as base (80% + rating-par already applied, capped)
-      // Then computeMatchHandicaps just does off-the-low + team combos
+      // 2026+: WHS two-step formula — one formula for everything
+      // Step 1: ROUND(index × slope/113 + (rating - par))
+      // Step 2: ROUND(courseHdcp × allowance%), then cap
+      // computeMatchHandicaps handles off-the-low + team combos
       const par = round.tee.holes.reduce((sum: number, h: { par: number }) => sum + h.par, 0)
+      const maxHdcp = hdcpConfig.maxHandicap ?? 24
       handicapInputs = validated.players.map(p => {
         const tp = tripPlayers.find(t => t.id === p.tripPlayerId)!
+        const whs = whsCourseHandicap(tp.handicapAtTime, round.tee.slope, round.tee.rating, par)
         return {
           tripPlayerId: tp.id,
-          courseHdcp: skinsHandicap(tp.handicapAtTime, round.tee.slope, round.tee.rating, par, 20, 'round'),
+          courseHdcp: whsPlayingHandicap(whs, hdcpConfig.percentage ?? 80, maxHdcp),
           side: p.side,
         }
       })
-      // Percentage=100 and no cap since skinsHandicap already handles both
+      // Allowance + cap already applied; computeMatchHandicaps just does off-the-low + team combos
       effectiveConfig = {
         ...hdcpConfig,
         percentage: 100,
