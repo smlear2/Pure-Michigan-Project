@@ -50,5 +50,19 @@ prisma/migrations/
 # Excel temp files
 ~$*
 
+# One-off scripts (debug, verify, fix, compare, check, etc.)
+scripts/check-*.js
+scripts/compare-*.js
+scripts/debug-*.js
+scripts/enable-*.js
+scripts/fix-*.js
+scripts/inspect-*.js
+scripts/recalc-*.js
+scripts/test-*.js
+scripts/verify-*.js
+
+# Supabase local config
+supabase/
+
 .vercel
 nul
