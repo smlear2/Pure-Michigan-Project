@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateTilt, TiltHoleScore } from '../tilt'
+import { calculateTiltPayouts } from '../compute-tilt'
 
 describe('calculateTilt', () => {
   // Helper to make a single-player hole score
@@ -119,18 +120,27 @@ describe('calculateTilt', () => {
     expect(p.holes[1].multiplier).toBe(1)
   })
 
-  it('caps multiplier at 3x even with 3+ consecutive birdies', () => {
+  it('multiplier grows beyond 3x with consecutive birdies (no cap)', () => {
     const holes: TiltHoleScore[] = [
-      hole(1, 3, 4),  // birdie → 2x
-      hole(2, 3, 4),  // birdie at 2x → 3x
-      hole(3, 3, 4),  // birdie at 3x → still 3x
-      hole(4, 3, 4),  // birdie at 3x → still 3x
+      hole(1, 3, 4),  // birdie → streak=1, mult=2 for next
+      hole(2, 3, 4),  // birdie at 2x → streak=2, mult=3 for next
+      hole(3, 3, 4),  // birdie at 3x → streak=3, mult=4 for next
+      hole(4, 3, 4),  // birdie at 4x → streak=4, mult=5 for next
     ]
     const result = calculateTilt(holes, 0, 1)
     const p = result.players[0]
 
+    expect(p.holes[0].multiplier).toBe(1)
+    expect(p.holes[1].multiplier).toBe(2)
     expect(p.holes[2].multiplier).toBe(3)
-    expect(p.holes[3].multiplier).toBe(3)
+    expect(p.holes[3].multiplier).toBe(4)
+    expect(p.holes[0].points).toBe(4)   // 4 × 1
+    expect(p.holes[1].points).toBe(8)   // 4 × 2
+    expect(p.holes[2].points).toBe(12)  // 4 × 3
+    expect(p.holes[3].points).toBe(16)  // 4 × 4
+    expect(p.totalPoints).toBe(40)
+    expect(p.finalMultiplier).toBe(5)
+    expect(p.finalStreak).toBe(4)
   })
 
   it('calculates pot and entry fee', () => {
@@ -222,5 +232,51 @@ describe('calculateTilt', () => {
 
     expect(p.finalMultiplier).toBe(3)
     expect(p.finalStreak).toBe(2)
+  })
+})
+
+describe('calculateTiltPayouts', () => {
+  it('pays top 3 at 60/30/10', () => {
+    const totals = new Map([['p1', 200], ['p2', 150], ['p3', 100], ['p4', 50]])
+    const payouts = calculateTiltPayouts(totals, 700)
+    expect(payouts.get('p1')).toBe(420)  // 60%
+    expect(payouts.get('p2')).toBe(210)  // 30%
+    expect(payouts.get('p3')).toBe(70)   // 10%
+    expect(payouts.has('p4')).toBe(false)
+  })
+
+  it('splits 1st+2nd when two tied for 1st', () => {
+    const totals = new Map([['p1', 200], ['p2', 200], ['p3', 100]])
+    const payouts = calculateTiltPayouts(totals, 1000)
+    // Tied for 1st: split 60% + 30% = 90% → 45% each
+    expect(payouts.get('p1')).toBeCloseTo(450)
+    expect(payouts.get('p2')).toBeCloseTo(450)
+    // 3rd gets 10%
+    expect(payouts.get('p3')).toBeCloseTo(100)
+  })
+
+  it('splits entire pot when three or more tied for 1st', () => {
+    const totals = new Map([['p1', 100], ['p2', 100], ['p3', 100], ['p4', 50]])
+    const payouts = calculateTiltPayouts(totals, 600)
+    // 3 tied for 1st: split 60%+30%+10% = 100% → 33.33% each
+    expect(payouts.get('p1')).toBeCloseTo(200)
+    expect(payouts.get('p2')).toBeCloseTo(200)
+    expect(payouts.get('p3')).toBeCloseTo(200)
+    expect(payouts.has('p4')).toBe(false)
+  })
+
+  it('splits 2nd+3rd when two tied for 2nd', () => {
+    const totals = new Map([['p1', 200], ['p2', 100], ['p3', 100], ['p4', 50]])
+    const payouts = calculateTiltPayouts(totals, 1000)
+    expect(payouts.get('p1')).toBe(600)  // 60%
+    // Tied for 2nd: split 30% + 10% = 40% → 20% each
+    expect(payouts.get('p2')).toBe(200)
+    expect(payouts.get('p3')).toBe(200)
+    expect(payouts.has('p4')).toBe(false)
+  })
+
+  it('returns empty map for empty input', () => {
+    const payouts = calculateTiltPayouts(new Map(), 700)
+    expect(payouts.size).toBe(0)
   })
 })

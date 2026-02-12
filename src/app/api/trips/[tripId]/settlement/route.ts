@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, requireTripMember } from '@/lib/auth'
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 import { simplifyDebts } from '@/lib/finance'
-import { calculateTilt, TiltHoleScore, computeSkinsForRound, HandicapConfig } from '@/lib/golf'
+import { computeTiltForRound, computeSkinsForRound, calculateTiltPayouts, HandicapConfig, TiltCarryoverState } from '@/lib/golf'
 
 // GET /api/trips/[tripId]/settlement — net balances + simplified debts
 export async function GET(
@@ -24,10 +24,6 @@ export async function GET(
         team: { select: { name: true, color: true } },
       },
     })
-
-    // Build opt-in sets for filtering
-    const skinsOptedIn = new Set(tripPlayers.filter(tp => tp.skinsOptIn).map(tp => tp.id))
-    const tiltOptedIn = new Set(tripPlayers.filter(tp => tp.tiltOptIn).map(tp => tp.id))
 
     // --- 1. Payment Schedule Balance ---
     const paymentItems = await prisma.paymentItem.findMany({
@@ -169,84 +165,103 @@ export async function GET(
       }
     }
 
-    // --- 3b. TILT Gambling Balance ---
+    // --- 3b. TILT Gambling Balance (tournament-wide: one winner, entry fee paid once) ---
     const tiltRounds = await prisma.round.findMany({
       where: { tripId: params.tripId, tiltEnabled: true },
       include: {
-        trip: { select: { defaultTiltEntryFee: true } },
+        trip: { select: { defaultTiltEntryFee: true, defaultTiltCarryover: true, handicapConfig: true } },
         tee: { include: { holes: { orderBy: { number: 'asc' } } } },
       },
+      orderBy: { roundNumber: 'asc' },
     })
 
-    const tiltScores = await prisma.score.findMany({
-      where: {
-        matchPlayer: {
-          match: { round: { tripId: params.tripId, tiltEnabled: true } },
+    if (tiltRounds.length > 0) {
+      const tiltScores = await prisma.score.findMany({
+        where: {
+          matchPlayer: {
+            match: { round: { tripId: params.tripId, tiltEnabled: true } },
+          },
         },
-      },
-      include: {
-        hole: true,
-        matchPlayer: {
-          select: { tripPlayerId: true, match: { select: { roundId: true } } },
+        include: {
+          hole: true,
+          matchPlayer: {
+            select: {
+              tripPlayerId: true,
+              match: { select: { roundId: true } },
+              tripPlayer: { select: { handicapAtTime: true, tiltOptIn: true } },
+            },
+          },
         },
-      },
-    })
+      })
 
-    const tiltScoresByRound = new Map<string, typeof tiltScores>()
-    for (const s of tiltScores) {
-      const rid = s.matchPlayer.match.roundId
-      if (!tiltScoresByRound.has(rid)) tiltScoresByRound.set(rid, [])
-      tiltScoresByRound.get(rid)!.push(s)
-    }
+      const tiltScoresByRound = new Map<string, typeof tiltScores>()
+      for (const s of tiltScores) {
+        const rid = s.matchPlayer.match.roundId
+        if (!tiltScoresByRound.has(rid)) tiltScoresByRound.set(rid, [])
+        tiltScoresByRound.get(rid)!.push(s)
+      }
 
-    const tiltWagerConfig = await prisma.wagerConfig.findFirst({
-      where: { tripId: params.tripId, type: 'TILT', isActive: true },
-    })
+      const tiltWagerConfig = await prisma.wagerConfig.findFirst({
+        where: { tripId: params.tripId, type: 'TILT', isActive: true },
+      })
 
-    for (const round of tiltRounds) {
-      const roundScores = tiltScoresByRound.get(round.id) || []
-      if (roundScores.length === 0) continue
+      // Accumulate TILT points across all rounds per player
+      const tiltGrandTotals = new Map<string, number>()
+      const allTiltPlayers = new Set<string>()
+      const useCarryover = tiltRounds[0].trip.defaultTiltCarryover
+      let carryover: TiltCarryoverState | undefined
 
-      const holeScoresMap = new Map<string, Map<string, { netScore: number; par: number }>>()
-      const uniqueTiltPlayers = new Set<string>()
+      for (const round of tiltRounds) {
+        const roundScores = tiltScoresByRound.get(round.id) || []
+        if (roundScores.length === 0) continue
 
-      for (const score of roundScores) {
-        const tpId = score.matchPlayer.tripPlayerId
-        if (!tiltOptedIn.has(tpId)) continue
-        if (!holeScoresMap.has(score.holeId)) holeScoresMap.set(score.holeId, new Map())
-        const holeMap = holeScoresMap.get(score.holeId)!
-        uniqueTiltPlayers.add(tpId)
-        if (!holeMap.has(tpId)) {
-          holeMap.set(tpId, { netScore: score.netScore, par: score.hole.par })
+        const hdcpConfig = round.trip.handicapConfig as HandicapConfig | null
+
+        const playerMap = new Map<string, { handicapIndex: number; tiltOptIn: boolean }>()
+        for (const s of roundScores) {
+          const tpId = s.matchPlayer.tripPlayerId
+          if (!playerMap.has(tpId)) {
+            playerMap.set(tpId, {
+              handicapIndex: s.matchPlayer.tripPlayer.handicapAtTime ?? 0,
+              tiltOptIn: s.matchPlayer.tripPlayer.tiltOptIn,
+            })
+          }
+        }
+
+        const { tiltResult, carryoverState } = computeTiltForRound(
+          round.tee,
+          roundScores.map(s => ({
+            holeId: s.holeId,
+            grossScore: s.grossScore,
+            tripPlayerId: s.matchPlayer.tripPlayerId,
+          })),
+          Array.from(playerMap.entries()).map(([tpId, p]) => ({
+            tripPlayerId: tpId,
+            ...p,
+          })),
+          hdcpConfig,
+          0,
+          0,
+          useCarryover ? carryover : undefined,
+        )
+
+        if (useCarryover) carryover = carryoverState
+
+        for (const p of tiltResult.players) {
+          allTiltPlayers.add(p.playerId)
+          tiltGrandTotals.set(p.playerId, (tiltGrandTotals.get(p.playerId) ?? 0) + p.totalPoints)
         }
       }
 
-      const tiltHoleScores: TiltHoleScore[] = round.tee.holes.map(hole => {
-        const holeMap = holeScoresMap.get(hole.id)
-        if (!holeMap) return { holeNumber: hole.number, playerScores: [] }
-        return {
-          holeNumber: hole.number,
-          playerScores: Array.from(holeMap.entries()).map(([playerId, data]) => ({
-            playerId,
-            netScore: data.netScore,
-            par: data.par,
-          })),
-        }
-      })
+      // Tournament-wide: entry fee paid once, top-3 payout (60/30/10)
+      const tiltEntryFee = tiltWagerConfig?.entryFee ?? tiltRounds[0].trip.defaultTiltEntryFee
+      const pot = tiltEntryFee * allTiltPlayers.size
 
-      const tiltEntryFee = tiltWagerConfig?.entryFee ?? round.trip.defaultTiltEntryFee
-      const tiltResult = calculateTilt(tiltHoleScores, tiltEntryFee, uniqueTiltPlayers.size)
-      const pot = tiltEntryFee * uniqueTiltPlayers.size
+      const tiltPayouts = calculateTiltPayouts(tiltGrandTotals, pot)
 
-      // Handle ties: split pot among all players sharing the top score
-      const topScore = tiltResult.players.length > 0 ? tiltResult.players[0].totalPoints : 0
-      const winners = tiltResult.players.filter(p => p.totalPoints === topScore)
-      const winnerIds = new Set(winners.map(w => w.playerId))
-      const winningsPerWinner = pot / winners.length
-
-      for (const tpId of Array.from(uniqueTiltPlayers)) {
+      for (const tpId of Array.from(allTiltPlayers)) {
         const bal = gamblingBalances.get(tpId) ?? 0
-        const winnings = winnerIds.has(tpId) ? winningsPerWinner : 0
+        const winnings = tiltPayouts.get(tpId) ?? 0
         gamblingBalances.set(tpId, bal + winnings - tiltEntryFee)
       }
     }

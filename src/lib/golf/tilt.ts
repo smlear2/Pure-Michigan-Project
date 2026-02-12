@@ -76,9 +76,9 @@ function getBasePoints(
  * Rules:
  * - Modified Stableford with multiplier mechanic
  * - Multiplier starts at 1x (or startingMultiplier for carryover)
- * - After net birdie: multiplier = 2x for next hole (streak++)
- * - Two consecutive birdies: multiplier = 3x (cap)
- * - Net eagle counts as two birdies → instant 3x
+ * - After net birdie: streak++, multiplier = streak + 1 for next hole
+ * - Net eagle counts as two birdies (streak += 2)
+ * - No cap on multiplier — grows indefinitely with consecutive birdies
  * - Net par: resets multiplier to 1x
  * - Bogey+: multiplier stays for THIS hole (you take the damage), then resets to 1x
  * - Multiplier applies to ALL points including negative
@@ -138,7 +138,7 @@ export function calculateTilt(
         } else {
           streak += 1
         }
-        multiplier = Math.min(streak + 1, 3)
+        multiplier = streak + 1 // No cap — multiplier grows with consecutive birdies
       } else if (netVsPar === 0) {
         // Par — reset
         streak = 0

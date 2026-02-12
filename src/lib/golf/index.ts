@@ -43,3 +43,6 @@ export type { SkinsScoreInput, SkinsPlayerInput, SkinsTeeInput, SkinsPlayerPayou
 
 export { calculateTilt } from './tilt'
 export type { TiltConfig, TiltHoleScore, TiltPlayerHole, TiltPlayerResult, TiltResult } from './tilt'
+
+export { computeTiltForRound, calculateTiltPayouts } from './compute-tilt'
+export type { TiltScoreInput, TiltPlayerInput, TiltTeeInput, TiltCarryoverState, ComputeTiltOutput } from './compute-tilt'
